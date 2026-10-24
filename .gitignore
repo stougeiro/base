@@ -1,0 +1,34 @@
+# VSCode
+/.devcontainer/
+
+# Composer
+/vendor/
+composer.lock
+
+# Composer cache (opcional, mas útil)
+.cache/
+composer-cache/
+
+# Logs
+*.log
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# PHPUnit
+.phpunit.result.cache
+
+# PHPStan / Psalm
+phpstan.cache
+psalm-cache/
+
+# Coverage
+coverage/
+
+!.gitkeep
