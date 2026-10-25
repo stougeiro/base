@@ -38,7 +38,8 @@
         "stougeiro/container": "^4.0",
         "stougeiro/http": "^2.2",
         "stougeiro/view": "^2.0",
-        "stougeiro/immutable": "^2.0"
+        "stougeiro/immutable": "^2.0",
+        "stougeiro/schema": "^2.0"
     },
     "require-dev": {
         "phpstan/phpstan": "^2.2"
