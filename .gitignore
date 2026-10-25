@@ -1,9 +1,14 @@
 # VSCode
-/.devcontainer/
+.devcontainer/
 
 # Composer
-/vendor/
+vendor/
 composer.lock
+
+# OpenCode
+.opencode/
+.agents/
+opencode.json
 
 # Composer cache (opcional, mas útil)
 .cache/
@@ -15,20 +20,26 @@ composer-cache/
 # IDEs
 .idea/
 .vscode/
+.archive/
 *.iml
 
 # Sistema operacional
 .DS_Store
 Thumbs.db
 
-# PHPUnit
+# PHPUnit / Pest
 .phpunit.result.cache
+.phpunit.cache/
 
 # PHPStan / Psalm
-phpstan.cache
+.phpstan/
 psalm-cache/
+
+# Pest
+.pest/
 
 # Coverage
 coverage/
+/build/
 
 !.gitkeep
