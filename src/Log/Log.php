@@ -75,7 +75,7 @@ final class Log implements LogInterface
 
         try {
             $logDir = Path::get('logs');
-            $logFile = $logDir . 'app.log';
+            $logFile = $logDir .'app.log';
 
             if (file_put_contents($logFile, $formatted, FILE_APPEND | LOCK_EX) !== false) {
                 return;
