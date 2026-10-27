@@ -34,7 +34,13 @@ function env(string $path, mixed $default = null): mixed
             throw new RuntimeException("env: file 'env.php' not found");
         }
 
-        $items = include $file;
+        $loaded = include $file;
+
+        if ( ! is_array($loaded)) {
+            throw new RuntimeException("env: file 'env.php' must return an array");
+        }
+
+        $items = $loaded;
     }
 
     $item = $items;

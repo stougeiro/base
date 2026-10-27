@@ -28,7 +28,7 @@ function config(string $path, mixed $default = null): mixed
     $segments = explode('.', $path);
     $filename = $segments[0];
 
-    if ( ! isset($items[$filename])) {
+    if ( ! array_key_exists($filename, $items)) {
         $file = realpath(Path::get('config') . $filename .'.php');
 
         if ($file === false) {
@@ -39,7 +39,13 @@ function config(string $path, mixed $default = null): mixed
             throw new RuntimeException("config: file 'config/{$filename}.php' not found");
         }
 
-        $items[$filename] = include $file;
+        $loaded = include $file;
+
+        if ( ! is_array($loaded)) {
+            throw new RuntimeException("config: file 'config/{$filename}.php' must return an array");
+        }
+
+        $items[$filename] = $loaded;
     }
 
     $item = $items[$filename];

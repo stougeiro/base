@@ -26,14 +26,16 @@ final class Path
      */
     public static function register(string $key, string $path, string $from = ''): void
     {
-        if (trim($from) !== '') {
+        $from = trim($from);
+
+        if ($from !== '') {
             $from = self::get($from);
         }
 
         $realpath = realpath($from . $path);
 
         if ($realpath === false) {
-            throw new RuntimeException("Path key '{$key}' not is valid.");
+            throw new RuntimeException("Path key '{$key}' is not valid: {$from}{$path}");
         }
 
         self::$paths[$key] = rtrim($realpath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
