@@ -17,9 +17,17 @@ final class Log implements LogInterface
     public const INFO = 2;
     public const DEBUG = 3;
 
+    private const LABELS = [
+        self::ERROR => 'ERROR',
+        self::WARN => 'WARN',
+        self::INFO => 'INFO',
+        self::DEBUG => 'DEBUG',
+    ];
 
-    public function __construct()
-    { }
+
+    public function __construct(
+        private readonly ?string $file = null,
+    ) { }
 
 
     /**
@@ -60,8 +68,8 @@ final class Log implements LogInterface
     public function write(string $message, int $level, array $context = []): void
     {
         $date = date('[Y-m-d H:i:s] ');
-        $label = strtoupper(self::label($level));
-        $line = $date . $label . $message;
+        $label = self::LABELS[$level] ?? 'DEBUG';
+        $line = $date . $label .' '. self::clean($message);
 
         if ( ! empty($context)) {
             $json = json_encode($context, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
@@ -74,28 +82,21 @@ final class Log implements LogInterface
         $formatted = $line . PHP_EOL;
 
         try {
-            $logDir = Path::get('logs');
-            $logFile = $logDir .'app.log';
+            $logFile = $this->file ?? Path::get('logs') .'app.log';
 
             if (file_put_contents($logFile, $formatted, FILE_APPEND | LOCK_EX) !== false) {
                 return;
             }
         } catch (Throwable $e) {
-            error_log($date .'ERROR '. $e->getMessage());
+            error_log($date . 'ERROR ' . self::clean($e->getMessage()));
         }
 
         error_log($formatted);
     }
 
 
-    private static function label(int $level): string
+    private static function clean(string $value): string
     {
-        return match ($level) {
-            0 => 'ERROR ',
-            1 => 'WARN ',
-            2 => 'INFO ',
-
-            default => 'DEBUG ',
-        };
+        return str_replace(["\r", "\n", "\0"], ' ', $value);
     }
 }
