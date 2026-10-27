@@ -14,7 +14,11 @@ interface ResultInterface
 {
     public function isSuccess(): bool;
 
-    public function data(): ImmutableInterface;
+    /**
+     * Null when no payload was provided; an immutable value (possibly empty)
+     * otherwise.
+     */
+    public function data(): ?ImmutableInterface;
 
     /**
      * @return array<int, string>

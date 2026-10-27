@@ -11,7 +11,7 @@ use STDW\Immutable\Contract\ImmutableInterface;
  */
 final readonly class Result implements ResultInterface
 {
-    private ImmutableInterface $result;
+    private ?ImmutableInterface $result;
 
 
     /**
@@ -19,10 +19,12 @@ final readonly class Result implements ResultInterface
      * @param array<int, string> $messages
      */
     private function __construct(
-        private ?array $data,
+        ?array $data,
         private bool $success,
         private array $messages = [],
-    ) { }
+    ) {
+        $this->result = ($data === null) ? null : immutable($data);
+    }
 
 
     /**
@@ -51,9 +53,9 @@ final readonly class Result implements ResultInterface
         return $this->success;
     }
 
-    public function data(): ImmutableInterface
+    public function data(): ?ImmutableInterface
     {
-        return $this->result ??= immutable($this->data ?? []);
+        return $this->result;
     }
 
     /**
