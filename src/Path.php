@@ -26,6 +26,10 @@ final class Path
      */
     public static function register(string $key, string $path, string $from = ''): void
     {
+        if (isset(self::$paths[$key])) {
+            throw new RuntimeException("Path key '{$key}' is already registered");
+        }
+
         $from = trim($from);
 
         if ($from !== '') {
