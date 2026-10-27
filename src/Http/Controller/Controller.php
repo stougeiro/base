@@ -4,9 +4,7 @@ namespace Sourcerer\Http\Controller;
 
 use STDW\Contract\Http\RequestInterface;
 use STDW\Contract\Http\ResponseInterface;
-use STDW\Contract\View\ViewManagerInterface;
 use STDW\Http\Response\EmptyResponse;
-use STDW\Http\Response\HtmlResponse;
 
 use Sourcerer\Error\Exception\HttpException;
 
