@@ -116,7 +116,7 @@ final class RoutingMiddlewareCollection
             $currentLength = strlen($namespace);
 
             if (
-                $currentLength > $length
+                   $currentLength > $length
                 && str_starts_with($controller, $namespace)
             ) {
                 $map = $candidate;
