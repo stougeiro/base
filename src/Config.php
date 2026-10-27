@@ -29,7 +29,17 @@ function config(string $path, mixed $default = null): mixed
     $filename = $segments[0];
 
     if ( ! array_key_exists($filename, $items)) {
-        $file = realpath(Path::get('config') . $filename .'.php');
+        try {
+            $configPath = Path::get('config');
+        } catch (RuntimeException $e) {
+            if ($hasDefault) {
+                return $default;
+            }
+
+            throw $e;
+        }
+
+        $file = realpath($configPath . $filename .'.php');
 
         if ($file === false) {
             if ($hasDefault) {
