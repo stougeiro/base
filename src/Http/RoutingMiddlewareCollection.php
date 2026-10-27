@@ -113,9 +113,14 @@ final class RoutingMiddlewareCollection
         $length = 0;
 
         foreach ($this->modules as $namespace => $candidate) {
-            if (str_starts_with($controller, $namespace) && strlen($namespace) > $length) {
+            $currentLength = strlen($namespace);
+
+            if (
+                $currentLength > $length
+                && str_starts_with($controller, $namespace)
+            ) {
                 $map = $candidate;
-                $length = strlen($namespace);
+                $length = $currentLength;
             }
         }
 
