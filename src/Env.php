@@ -24,7 +24,17 @@ function env(string $path, mixed $default = null): mixed
     $hasDefault = func_num_args() > 1;
 
     if ($items === null) {
-        $file = realpath(Path::get('root') .'env.php');
+        try {
+            $root = Path::get('root');
+        } catch (RuntimeException $e) {
+            if ($hasDefault) {
+                return $default;
+            }
+
+            throw $e;
+        }
+
+        $file = realpath($root .'env.php');
 
         if ($file === false) {
             if ($hasDefault) {
