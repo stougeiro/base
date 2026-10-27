@@ -11,6 +11,9 @@ use STDW\Immutable\Contract\ImmutableInterface;
  */
 final readonly class Result implements ResultInterface
 {
+    private ImmutableInterface $result;
+
+
     /**
      * @param ?array<mixed> $data
      * @param array<int, string> $messages
@@ -50,7 +53,7 @@ final readonly class Result implements ResultInterface
 
     public function data(): ImmutableInterface
     {
-        return immutable($this->data ?? []);
+        return $this->result ??= immutable($this->data ?? []);
     }
 
     /**
