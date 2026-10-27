@@ -29,7 +29,8 @@
         },
         "files": [
             "src/Env.php",
-            "src/Config.php"
+            "src/Config.php",
+            "src/Error/Fallback.php"
         ]
     },
     "require": {
