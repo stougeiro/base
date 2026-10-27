@@ -13,14 +13,15 @@ use ErrorException;
 use RuntimeException;
 use Throwable;
 
+use function Sourcerer\config;
+use function Sourcerer\env;
+
 
 /**
  * Turns any throwable into an HTTP response.
  *
- * Orchestrates status, headers, logging and rendering; the body itself belongs
- * to ErrorRenderer. It never depends on the application having fully booted:
- * if rendering fails, it degrades to a minimal body; if the whole handler
- * fails, the Kernel calls Fallback, which depends only on PHP itself.
+ * Opinionated framework init: reads environment and error settings directly
+ * from global helpers config() and env() with safe defaults.
  */
 final class ErrorHandler
 {
@@ -34,20 +35,15 @@ final class ErrorHandler
     private readonly ErrorRenderer $renderer;
 
 
-    /** 
-     * @param array<string, mixed> $config
-     */
     public function __construct(
         private readonly ContainerInterface $container,
-        array $config = [],
-        bool $development = false,
     ) {
-        $mode = $config['mode'] ?? 'html';
-        $messages = $config['messages'] ?? [];
-        $snippet = $config['snippet'] ?? [];
-        $pad = is_array($snippet) ? ($snippet['pad'] ?? 10) : 10;
+        $env = env('environment', 'production');
+        $mode = config('error.mode', 'html');
+        $messages = config('error.messages', []);
+        $pad = config('error.snippet.pad', 10);
 
-        $this->development = $development;
+        $this->development = is_string($env) && $env === 'development';
         $this->json = is_string($mode) && strtolower($mode) === 'json';
         $this->messages = is_array($messages) ? $messages : [];
 
@@ -167,8 +163,7 @@ final class ErrorHandler
         error_log($message . ' [' . $id . ']');
     }
 
-    /**
-     * @return array<string, mixed>
+    /** @return array<string, mixed>
      */
     private function override(int $status): array
     {
