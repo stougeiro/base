@@ -15,7 +15,6 @@ use Sourcerer\Error\ErrorHandler;
 use Sourcerer\Error\Fallback;
 use Sourcerer\Module\ModuleProviderInterface;
 use function Sourcerer\config;
-use function Sourcerer\env;
 
 use Throwable;
 
@@ -24,13 +23,11 @@ use Throwable;
  * Application lifecycle: services register and boot first, and only then the
  * modules configure themselves over the already configured application.
  *
- * The kernel is built once per process and boots once, no matter how many
- * requests it handles.
+ * Under FPM the kernel is created and boots once per request; long-running
+ * runtimes that reuse the process across requests are not supported.
  *
  * It reads configuration through the global helpers and resolves services
- * from the process-wide container, so the kernel, container, config, env and
- * paths are scoped to the FPM worker and shared by every request it handles.
- * Long-running runtimes that serve concurrent requests are not supported.
+ * from the global container; both live for the request lifetime under FPM.
  *
  * Error reporting is secured before configuration: the fatal fallback and the
  * production-safe ini are installed first, and development mode is enabled
@@ -59,12 +56,7 @@ final class Kernel
         }
 
         Fallback::register();
-        ErrorHandler::harden();
-
-        if (env('environment', 'production') === 'development') {
-            ErrorHandler::register('development');
-            ErrorHandler::harden(true);
-        }
+        ErrorHandler::bootstrap();
 
         $container = container();
         $container->singleton(ServiceManagerInterface::class, ServiceManager::class);
