@@ -43,7 +43,8 @@ final class ErrorRenderer
     }
 
 
-    /** @param array<string, mixed> $override The configured entry for the status.
+    /**
+     * @param array<string, mixed> $override The configured entry for the status.
      */
     public function render(Throwable $error, string $id, int $status, bool $development, bool $json, array $override = []): string
     {
@@ -64,7 +65,8 @@ final class ErrorRenderer
     }
 
 
-    /** @param array<string, mixed> $override
+    /**
+     * @param array<string, mixed> $override
      */
     private function html(Throwable $error, string $id, int $status, bool $development, array $override): string
     {
@@ -88,7 +90,8 @@ final class ErrorRenderer
         return $this->document($status . ' ' . $title, $body);
     }
 
-    /** @param array<string, mixed> $override
+    /**
+     * @param array<string, mixed> $override
      */
     private function json(Throwable $error, string $id, int $status, bool $development, array $override): string
     {
@@ -115,7 +118,8 @@ final class ErrorRenderer
         return $json === false ? '{"status":"error","message":"Internal Server Error"}' : $json;
     }
 
-    /** @param array<string, mixed> $override
+    /**
+     * @param array<string, mixed> $override
      */
     private function title(int $status, array $override): string
     {
@@ -124,7 +128,8 @@ final class ErrorRenderer
         return is_string($title) && $title !== '' ? $title : self::reason($status);
     }
 
-    /** @param array<string, mixed> $override
+    /**
+     * @param array<string, mixed> $override
      */
     private function message(Throwable $error, int $status, bool $development, array $override): string
     {

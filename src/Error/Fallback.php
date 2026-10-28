@@ -64,6 +64,8 @@ final class Fallback
     }
 
     /**
+     * Builds a throwable from error_get_last() when it is fatal.
+     *
      * @param array<string, mixed> $error
      */
     public static function fromLastError(array $error): ?Throwable
@@ -87,6 +89,10 @@ final class Fallback
         );
     }
 
+    /**
+     * Random request reference, with a non-cryptographic fallback when
+     * entropy is unavailable.
+     */
     public static function id(): string
     {
         try {

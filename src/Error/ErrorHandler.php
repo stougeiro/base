@@ -20,11 +20,13 @@ use function Sourcerer\env;
 /**
  * Turns any throwable into an HTTP response.
  *
- * Opinionated framework init: reads environment and error settings directly
- * from global helpers config() and env() with safe defaults.
+ * Opinionated framework init: bootstrap() secures error reporting before
+ * configuration and the constructor reads environment and error settings from
+ * the global helpers config() and env() with safe defaults.
  */
 final class ErrorHandler
 {
+    /** Substrings matched case-insensitively against query keys. */
     private const REDACT = [
         'password',
         'passwd',
@@ -86,20 +88,28 @@ final class ErrorHandler
     /**
      * Secures error reporting before configuration and enables development
      * visibility only when the environment says so.
+     *
+     * It deliberately does not use config(), so it can run while configuration
+     * is still unreadable.
      */
     public static function bootstrap(): void
     {
+        // Baseline before env(): a broken env.php must not leave display on.
         self::harden();
 
         if (env('environment', 'production') !== 'development') {
             return;
         }
 
+        // The environment is known and development, so expose the details.
         self::harden(true);
         self::register();
     }
 
 
+    /**
+     * Logs the throwable and renders it as an HTML or JSON response.
+     */
     public function handle(Throwable $error, RequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $id = Fallback::id();
@@ -147,7 +157,11 @@ final class ErrorHandler
     }
 
 
-    /** Safe error settings for deployments that cannot edit php.ini.
+    /**
+     * Safe error settings for deployments that cannot edit php.ini.
+     *
+     * Private on purpose: bootstrap() is the only caller and passes the mode
+     * explicitly so the safe baseline runs before env() is read.
      */
     private static function harden(bool $development = false): void
     {
@@ -158,6 +172,12 @@ final class ErrorHandler
         error_reporting(\E_ALL);
     }
 
+    /**
+     * Installs the development error handler.
+     *
+     * bootstrap() calls it only after harden(true), so error_reporting is
+     * already E_ALL and no environment argument is needed.
+     */
     private static function register(): void
     {
         set_error_handler(static function (int $severity, string $message, string $file, int $line): bool {
@@ -173,7 +193,8 @@ final class ErrorHandler
         });
     }
 
-    /** @return list<string>
+    /**
+     * @return list<string>
      */
     private static function normalizeRedact(mixed $redact): array
     {
@@ -198,6 +219,9 @@ final class ErrorHandler
     }
 
 
+    /**
+     * Logs through the container logger, falling back to error_log.
+     */
     private function log(string $id, Throwable $error, RequestInterface $request, int $status): void
     {
         $message = self::clean($error->getMessage());
@@ -219,6 +243,7 @@ final class ErrorHandler
             ];
 
             if ($status >= 500) {
+                // harden() hides argument values in production.
                 $context['trace'] = $error->getTraceAsString();
             }
 
@@ -257,6 +282,10 @@ final class ErrorHandler
         return $redacted;
     }
 
+    /**
+     * Case-insensitive substring match: catches api_key/accessToken variants;
+     * a false positive only hides a query parameter from the log.
+     */
     private function isSensitive(string $key): bool
     {
         $key = strtolower($key);
@@ -270,7 +299,8 @@ final class ErrorHandler
         return false;
     }
 
-    /** @return array<string, mixed>
+    /**
+     * @return array<string, mixed>
      */
     private function override(int $status): array
     {
@@ -284,6 +314,10 @@ final class ErrorHandler
         return $override;
     }
 
+    /**
+     * Best-effort client IP for logs. Forwarded headers are client-controlled,
+     * so this must not be used for authorization decisions.
+     */
     private function clientIp(RequestInterface $request): string
     {
         $forwarded = $request->getHeader('X-Forwarded-For');
