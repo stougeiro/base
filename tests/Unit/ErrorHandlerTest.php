@@ -80,28 +80,102 @@ test('error handler logs the forwarded client ip', function () {
         ->toContain('"ip":"203.0.113.7"');
 });
 
-test('error handler register installs handlers only in development', function () {
+test('error handler bootstrap secures production ini', function () {
+    $display = ini_get('display_errors');
+    $log = ini_get('log_errors');
+    $ignore = ini_get('zend.exception_ignore_args');
     $level = error_reporting();
 
     try {
-        ErrorHandler::register('production');
-        ErrorHandler::register('development');
+        ErrorHandler::bootstrap();
 
-        @trigger_error('deprecated', E_USER_DEPRECATED);
-        @trigger_error('notice', E_USER_NOTICE);
+        expect(ini_get('display_errors'))->toBe('0')
+            ->and(ini_get('log_errors'))->toBe('1')
+            ->and(ini_get('zend.exception_ignore_args'))->toBe('1')
+            ->and(error_reporting())->toBe(E_ALL);
 
-        $thrown = false;
+        $error = (static function (string $secret): RuntimeException {
+            return new RuntimeException('Boom');
+        })('trace-secret');
 
-        try {
-            trigger_error('boom', E_USER_WARNING);
-        } catch (ErrorException $exception) {
-            $thrown = true;
+        $this->handler->handle(
+            $error,
+            new FakeRequest('GET', 'http://localhost/', ['Accept' => 'text/html']),
+            new Response(),
+        );
+
+        expect((string) file_get_contents($this->logFile))->not->toContain('trace-secret');
+    } finally {
+        if ($display !== false) {
+            ini_set('display_errors', $display);
         }
 
-        expect($thrown)->toBeTrue();
-    } finally {
-        restore_error_handler();
+        if ($log !== false) {
+            ini_set('log_errors', $log);
+        }
+
+        if ($ignore !== false) {
+            ini_set('zend.exception_ignore_args', $ignore);
+        }
+
         error_reporting($level);
+    }
+});
+
+test('error handler bootstrap enables development ini and handler', function () {
+    $root = temp_dir('eh_boot_');
+    file_put_contents($root . '/env.php', '<?php return ["environment" => "development"];');
+
+    $export = var_export($root, true);
+    $code = '\Sourcerer\Path::register("root", ' . $export . ');'
+        . '\Sourcerer\Error\ErrorHandler::bootstrap();'
+        . 'echo ini_get("display_errors") . "|" . ini_get("zend.exception_ignore_args") . "|" . ini_get("log_errors") . "|" . error_reporting() . "|";'
+        . '@trigger_error("deprecated", E_USER_DEPRECATED);'
+        . '@trigger_error("notice", E_USER_NOTICE);'
+        . 'try { trigger_error("boom", E_USER_WARNING); echo "no-throw"; } catch (\ErrorException $e) { echo "caught"; }';
+
+    try {
+        expect(trim(run_php($code)))->toBe('1|0|1|' . E_ALL . '|caught');
+    } finally {
+        remove_tree($root);
+    }
+});
+
+test('error handler redacts sensitive query keys by substring', function () {
+    $request = new FakeRequest(
+        'GET',
+        'http://localhost/boom?api_key=secret&access_token=abc&page=2&q=hello',
+        ['Accept' => 'text/html'],
+    );
+
+    $this->handler->handle(new RuntimeException('Boom'), $request, new Response());
+
+    $log = (string) file_get_contents($this->logFile);
+
+    expect($log)->toContain('api_key=%5Bredacted%5D')
+        ->and($log)->toContain('access_token=%5Bredacted%5D')
+        ->and($log)->toContain('page=2')
+        ->and($log)->toContain('q=hello');
+});
+
+test('error handler falls back to the remote address for the log', function () {
+    $previous = $_SERVER['REMOTE_ADDR'] ?? null;
+    $_SERVER['REMOTE_ADDR'] = '192.0.2.10';
+
+    try {
+        $this->handler->handle(
+            new RuntimeException('Boom'),
+            new FakeRequest('GET', 'http://localhost/', ['Accept' => 'text/html']),
+            new Response(),
+        );
+
+        expect((string) file_get_contents($this->logFile))->toContain('"ip":"192.0.2.10"');
+    } finally {
+        if ($previous === null) {
+            unset($_SERVER['REMOTE_ADDR']);
+        } else {
+            $_SERVER['REMOTE_ADDR'] = $previous;
+        }
     }
 });
 
