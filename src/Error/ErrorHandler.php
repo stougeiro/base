@@ -25,12 +25,28 @@ use function Sourcerer\env;
  */
 final class ErrorHandler
 {
+    private const REDACT = [
+        'password',
+        'passwd',
+        'pwd',
+        'token',
+        'secret',
+        'key',
+        'authorization',
+        'cookie',
+        'session',
+        'csrf',
+    ];
+
     private readonly bool $development;
 
     private readonly bool $json;
 
     /** @var array<int|string, mixed> */
     private readonly array $messages;
+
+    /** @var list<string> */
+    private readonly array $sensitive;
 
     private readonly ErrorRenderer $renderer;
 
@@ -42,10 +58,15 @@ final class ErrorHandler
         $mode = config('error.mode', 'html');
         $messages = config('error.messages', []);
         $pad = config('error.snippet.pad', 10);
+        $redact = config('error.log.redact', self::REDACT);
 
         $this->development = is_string($env) && $env === 'development';
         $this->json = is_string($mode) && strtolower($mode) === 'json';
         $this->messages = is_array($messages) ? $messages : [];
+        $this->sensitive = array_values(array_unique([
+            ...self::REDACT,
+            ...self::normalizeRedact($redact),
+        ]));
 
         if ( ! is_int($pad)) {
             $pad = is_numeric($pad) ? (int) $pad : 10;
@@ -74,6 +95,16 @@ final class ErrorHandler
 
             throw new ErrorException($message, 0, $severity, $file, $line);
         });
+    }
+
+    /**
+     * Safe error settings for deployments that cannot edit php.ini.
+     */
+    public static function harden(bool $displayErrors = false): void
+    {
+        ini_set('display_errors', $displayErrors ? '1' : '0');
+        ini_set('log_errors', '1');
+        error_reporting(\E_ALL);
     }
 
 
@@ -124,6 +155,31 @@ final class ErrorHandler
     }
 
 
+    /** @return list<string>
+     */
+    private static function normalizeRedact(mixed $redact): array
+    {
+        if ( ! is_array($redact)) {
+            return [];
+        }
+
+        $keys = [];
+
+        foreach ($redact as $key) {
+            if (is_string($key) && $key !== '') {
+                $keys[] = strtolower($key);
+            }
+        }
+
+        return $keys;
+    }
+
+    private static function clean(string $value): string
+    {
+        return str_replace(["\r", "\n", "\0"], ' ', $value);
+    }
+
+
     private function log(string $id, Throwable $error, RequestInterface $request, int $status): void
     {
         $message = self::clean($error->getMessage());
@@ -139,7 +195,7 @@ final class ErrorHandler
                 'line' => $error->getLine(),
                 'method' => $request->getMethod(),
                 'path' => self::clean($uri->getPath()),
-                'query' => http_build_query($uri->getQuery()),
+                'query' => http_build_query($this->redact($uri->getQuery())),
                 'ip' => $this->clientIp($request),
                 'ua' => self::clean($request->getHeader('User-Agent') ?? ''),
             ];
@@ -161,6 +217,26 @@ final class ErrorHandler
         }
 
         error_log($message . ' [' . $id . ']');
+    }
+
+    /**
+     * @param array<mixed> $query
+     * @return array<mixed>
+     */
+    private function redact(array $query): array
+    {
+        $redacted = [];
+
+        foreach ($query as $key => $value) {
+            if (is_string($key) && in_array(strtolower($key), $this->sensitive, true)) {
+                $redacted[$key] = '[redacted]';
+                continue;
+            }
+
+            $redacted[$key] = is_array($value) ? $this->redact($value) : $value;
+        }
+
+        return $redacted;
     }
 
     /** @return array<string, mixed>
@@ -209,11 +285,5 @@ final class ErrorHandler
         $accept = $request->getHeader('Accept');
 
         return $accept !== null && str_contains(strtolower($accept), 'application/json');
-    }
-
-
-    private static function clean(string $value): string
-    {
-        return str_replace(["\r", "\n", "\0"], ' ', $value);
     }
 }

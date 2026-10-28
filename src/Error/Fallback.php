@@ -2,6 +2,7 @@
 
 namespace Sourcerer\Error;
 
+use ErrorException;
 use Throwable;
 
 
@@ -17,6 +18,76 @@ final class Fallback
 {
     private const REASON = 'Internal Server Error';
 
+    private const FATAL = [
+        \E_ERROR,
+        \E_PARSE,
+        \E_CORE_ERROR,
+        \E_COMPILE_ERROR,
+        \E_USER_ERROR,
+        \E_RECOVERABLE_ERROR,
+    ];
+
+    private static bool $registered = false;
+
+    private static bool $emitted = false;
+
+
+    /**
+     * Installs the shutdown guard that turns uncatchable fatal errors into the
+     * last-resort 500 answer. Idempotent: call it once from the bootstrap.
+     */
+    public static function register(): void
+    {
+        if (self::$registered) {
+            return;
+        }
+
+        self::$registered = true;
+
+        register_shutdown_function(static function (): void {
+            if (self::$emitted) {
+                return;
+            }
+
+            $error = error_get_last();
+
+            if ($error === null) {
+                return;
+            }
+
+            $fatal = self::fromLastError($error);
+
+            if ($fatal !== null) {
+                self::emit($fatal);
+            }
+        });
+    }
+
+
+    /**
+     * @param array<string, mixed> $error
+     */
+    public static function fromLastError(array $error): ?Throwable
+    {
+        $type = $error['type'] ?? null;
+
+        if ( ! is_int($type) || ! in_array($type, self::FATAL, true)) {
+            return null;
+        }
+
+        $message = $error['message'] ?? '';
+        $file = $error['file'] ?? '';
+        $line = $error['line'] ?? 0;
+
+        return new ErrorException(
+            is_string($message) ? $message : '',
+            0,
+            $type,
+            is_string($file) ? $file : '',
+            is_int($line) ? $line : 0,
+        );
+    }
+
 
     /**
      * Emits a plain 500 and terminates the request.
@@ -26,6 +97,8 @@ final class Fallback
      */
     public static function emit(Throwable $error): never
     {
+        self::$emitted = true;
+
         $id = self::id();
 
         while (ob_get_level() > 0) {
