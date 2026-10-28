@@ -26,9 +26,10 @@ use Throwable;
  * The kernel is built once per process and boots once, no matter how many
  * requests it handles.
  *
- * It depends only on injected contracts (ConfigInterface, PathsInterface) so
- * it carries no global constant / superglobal coupling and remains reusable
- * across deployments (FPM, Swoole, etc.).
+ * It reads configuration through the global helpers and resolves services
+ * from the process-wide container, so the kernel, container, config, env and
+ * paths are scoped to the FPM worker and shared by every request it handles.
+ * Long-running runtimes that serve concurrent requests are not supported.
  */
 final class Kernel
 {

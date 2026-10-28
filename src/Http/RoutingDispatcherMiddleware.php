@@ -48,7 +48,7 @@ final class RoutingDispatcherMiddleware implements MiddlewareInterface
         }
 
         foreach ($route->getVariables() as $name => $value) {
-            $request->withAttribute($name, $value);
+            $request = $request->withAttribute($name, $value);
         }
 
         /** @var class-string<ControllerInterface> $controller */
