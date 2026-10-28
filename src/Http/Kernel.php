@@ -40,15 +40,20 @@ final class Kernel
     private bool $booted = false;
 
 
-    /** @param list<ModuleProviderInterface> $modules 
+    /**
+     * @param list<ModuleProviderInterface> $modules
      */
     private function __construct(
-        private ContainerInterface $container,
-        private ServiceManagerInterface $manager,
-        private array $modules
+        private readonly ContainerInterface $container,
+        private readonly ServiceManagerInterface $manager,
+        private readonly array $modules
     ) { }
 
 
+    /**
+     * Builds the kernel once and installs the fallback and error bootstrap
+     * before any configuration is read.
+     */
     public static function create(): self
     {
         if (self::$instance instanceof self) {
@@ -83,6 +88,10 @@ final class Kernel
     }
 
 
+    /**
+     * Boots the application and dispatches the request, converting throwables
+     * into error responses (or the fatal fallback if that also fails).
+     */
     public function handle(RequestInterface $request): ResponseInterface
     {
         $response = new Response();
@@ -108,12 +117,18 @@ final class Kernel
         }
     }
 
+    /**
+     * Terminates the registered service providers.
+     */
     public function terminate(): void
     {
         $this->manager->terminate();
     }
 
 
+    /**
+     * Registers and boots providers, then configures modules; runs once.
+     */
     private function boot(): void
     {
         if ($this->booted) {

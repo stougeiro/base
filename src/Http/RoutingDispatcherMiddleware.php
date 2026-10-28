@@ -31,10 +31,10 @@ final class RoutingDispatcherMiddleware implements MiddlewareInterface
 
 
     /**
-     * @param RequestInterface $request
-     * @param ResponseInterface $response
-     * @param Closure $next
-     * @return ResponseInterface
+     * Matches the route and runs the module/controller middleware chain.
+     *
+     * @throws HttpException When no route matches.
+     * @throws RuntimeException When the route points to a non-controller.
      */
     public function process(RequestInterface $request, ResponseInterface $response, Closure $next): ResponseInterface
     {
@@ -43,7 +43,7 @@ final class RoutingDispatcherMiddleware implements MiddlewareInterface
 
         $route = $router->match($request);
 
-        if (is_null($route)) {
+        if ($route === null) {
             throw new HttpException(404, 'Not Found');
         }
 

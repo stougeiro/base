@@ -33,6 +33,8 @@ abstract class Controller implements ControllerInterface
 
 
     /**
+     * Answers OPTIONS with the Allow header.
+     *
      * @return ResponseInterface
      */
     final public function options(): ResponseInterface
@@ -69,6 +71,8 @@ abstract class Controller implements ControllerInterface
 
 
     /**
+     * Throws a 405 carrying the Allow header.
+     *
      * @return ResponseInterface
      */
     final protected function notAllowed(): ResponseInterface
@@ -77,6 +81,8 @@ abstract class Controller implements ControllerInterface
     }
 
     /**
+     * Allowed verbs plus OPTIONS, uppercased.
+     *
      * @return string
      */
     final protected function allowHeader(): string

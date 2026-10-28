@@ -14,7 +14,7 @@ use RuntimeException;
 /**
  * Middlewares of the application by module scope: the module level ('*') and
  * the controller level (the exact controller key), declared by each module in
- * its Config/middlewares.php.
+ * its own middleware map.
  */
 final class RoutingMiddlewareCollection
 {
@@ -143,6 +143,8 @@ final class RoutingMiddlewareCollection
     }
 
     /**
+     * Resolves each class once, preserving declaration order.
+     *
      * @param list<string> $classes
      * @return list<MiddlewareInterface>
      */
