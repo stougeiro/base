@@ -36,6 +36,13 @@ final class ErrorHandler
         'cookie',
         'session',
         'csrf',
+        'auth',
+        'jwt',
+        'signature',
+        'otp',
+        'pin',
+        'cvv',
+        'card',
     ];
 
     private readonly bool $development;
@@ -76,35 +83,20 @@ final class ErrorHandler
     }
 
 
-    public static function register(string $environment = 'development'): void
+    /**
+     * Secures error reporting before configuration and enables development
+     * visibility only when the environment says so.
+     */
+    public static function bootstrap(): void
     {
-        if ($environment !== 'development') {
+        self::harden();
+
+        if (env('environment', 'production') !== 'development') {
             return;
         }
 
-        error_reporting(\E_ALL);
-
-        set_error_handler(static function (int $severity, string $message, string $file, int $line): bool {
-            if (($severity & (\E_DEPRECATED | \E_USER_DEPRECATED)) !== 0) {
-                return false;
-            }
-
-            if ( ! (error_reporting() & $severity)) {
-                return false;
-            }
-
-            throw new ErrorException($message, 0, $severity, $file, $line);
-        });
-    }
-
-    /**
-     * Safe error settings for deployments that cannot edit php.ini.
-     */
-    public static function harden(bool $displayErrors = false): void
-    {
-        ini_set('display_errors', $displayErrors ? '1' : '0');
-        ini_set('log_errors', '1');
-        error_reporting(\E_ALL);
+        self::harden(true);
+        self::register();
     }
 
 
@@ -154,6 +146,32 @@ final class ErrorHandler
         return $response->withBody($body);
     }
 
+
+    /** Safe error settings for deployments that cannot edit php.ini.
+     */
+    private static function harden(bool $development = false): void
+    {
+        ini_set('display_errors', $development ? '1' : '0');
+        ini_set('log_errors', '1');
+        ini_set('zend.exception_ignore_args', $development ? '0' : '1');
+
+        error_reporting(\E_ALL);
+    }
+
+    private static function register(): void
+    {
+        set_error_handler(static function (int $severity, string $message, string $file, int $line): bool {
+            if (($severity & (\E_DEPRECATED | \E_USER_DEPRECATED)) !== 0) {
+                return false;
+            }
+
+            if ( ! (error_reporting() & $severity)) {
+                return false;
+            }
+
+            throw new ErrorException($message, 0, $severity, $file, $line);
+        });
+    }
 
     /** @return list<string>
      */
@@ -228,7 +246,7 @@ final class ErrorHandler
         $redacted = [];
 
         foreach ($query as $key => $value) {
-            if (is_string($key) && in_array(strtolower($key), $this->sensitive, true)) {
+            if (is_string($key) && $this->isSensitive($key)) {
                 $redacted[$key] = '[redacted]';
                 continue;
             }
@@ -237,6 +255,19 @@ final class ErrorHandler
         }
 
         return $redacted;
+    }
+
+    private function isSensitive(string $key): bool
+    {
+        $key = strtolower($key);
+
+        foreach ($this->sensitive as $term) {
+            if (str_contains($key, $term)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** @return array<string, mixed>
