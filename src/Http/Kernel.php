@@ -15,6 +15,7 @@ use Sourcerer\Error\ErrorHandler;
 use Sourcerer\Error\Fallback;
 use Sourcerer\Module\ModuleProviderInterface;
 use function Sourcerer\config;
+use function Sourcerer\env;
 
 use Throwable;
 
@@ -30,6 +31,10 @@ use Throwable;
  * from the process-wide container, so the kernel, container, config, env and
  * paths are scoped to the FPM worker and shared by every request it handles.
  * Long-running runtimes that serve concurrent requests are not supported.
+ *
+ * Error reporting is secured before configuration: the fatal fallback and the
+ * production-safe ini are installed first, and development mode is enabled
+ * only after the environment is known.
  */
 final class Kernel
 {
@@ -51,6 +56,14 @@ final class Kernel
     {
         if (self::$instance instanceof self) {
             return self::$instance;
+        }
+
+        Fallback::register();
+        ErrorHandler::harden();
+
+        if (env('environment', 'production') === 'development') {
+            ErrorHandler::register('development');
+            ErrorHandler::harden(true);
         }
 
         $container = container();
