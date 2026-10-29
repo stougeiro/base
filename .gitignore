@@ -14,6 +14,10 @@ opencode.json
 .cache/
 composer-cache/
 
+# Environment
+env.json
+.env
+
 # Logs
 *.log
 
