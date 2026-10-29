@@ -1,54 +1,57 @@
 ![PHP](https://img.shields.io/badge/PHP-%20^8.2-777BB4)
 ![PHPStan-Level](https://img.shields.io/badge/PHPStan-Level%209-224488)
-![Pest-php](https://img.shields.io/badge/Tests-Passed-019733)
+![Pest-php](https://img.shields.io/badge/Pest-php-019733)
 ![License](https://img.shields.io/badge/License-MIT-777)
 
 # Base
 
-An opinionated PHP 8.2 foundation for small HTTP applications. It provides an
-explicit request lifecycle, module-scoped routing and middleware, consistent
-error responses, and a safe bootstrap without the weight of a full framework.
+An opinionated PHP 8.2 foundation for small HTTP and API applications.
 
-Base is intentionally small: it supplies the module, routing, error handling,
-configuration, and logging primitives. Application wiring stays in the
-application, where it can be inspected and replaced.
+Base supplies the request lifecycle, module boundaries, controllers, error
+handling, configuration, and logging. It deliberately stops at the HTTP
+boundary: concrete routing, cache, views, and application wiring belong to the
+application.
+
+The goal is a small, explicit core that is easy to inspect, replace, and test.
+
+## Why Base
+
+- **API-first by default.** Base has no view layer and no presentation
+  dependency. Applications that need HTML can add their own integration.
+- **Explicit over magic.** Modules are listed in configuration. Routes and
+  middleware are declared in files. Only the module provider is global.
+- **Safe defaults.** The fatal fallback and production-safe error settings are
+  installed before configuration is read.
+- **Small surface.** Composer installs the HTTP core, not a full framework.
+- **Per-request state.** Under FPM, paths, configuration, and the kernel live
+  for one request. There is no hidden long-running state.
 
 ## Features
 
 - **Per-request kernel** — providers register and boot, modules configure
-  themselves, the request is handled, and providers terminate. Under FPM the
-  kernel is created once per request.
-- **Self-contained modules** — a module owns its routes, middleware,
-  controllers, and optional views. Only its provider class is referenced from
-  application configuration.
-- **Secure error bootstrap** — the fatal fallback and production-safe error
-  settings are installed before configuration is read. Development visibility
-  is enabled only after `env('environment')` is known.
-- **Routing and controllers** — routes point to controllers, route variables
-  become request attributes, and module/controller middleware run around the
-  controller. `OPTIONS` is answered automatically and invalid verbs receive a
-  `405` with an `Allow` header.
-- **Consistent error responses** — HTML or JSON bodies, `HttpException` status
-  and headers, request reference IDs, `Cache-Control: no-store`, and
-  `X-Content-Type-Options: nosniff`. Development responses include a source
-  snippet and stack trace.
-- **Safe logging** — sensitive query parameters are redacted before logging;
-  the logger falls back to `error_log` when the log file is unavailable.
-- **Configuration helpers** — dot-notated `env.php` and `config/*.php` files
-  with explicit defaults and fast failure for missing keys. `Path` resolves
-  real directories and rejects typos at registration time.
-- **Small service layer** — immutable `Result`, `ActionServiceInterface`,
-  `CheckServiceInterface`, and `LogInterface`.
+  themselves, the request is handled, and providers terminate.
+- **Self-contained modules** — a module owns its routes, middleware, and
+  controllers. Only its provider class is referenced globally.
+- **Routing and controllers** — route variables become request attributes,
+  middleware runs around controllers, `OPTIONS` is answered automatically, and
+  invalid verbs receive `405` with an `Allow` header.
+- **Consistent errors** — HTML or JSON responses, `HttpException`, request
+  reference IDs, safe production responses, and configurable logging.
+- **Secure bootstrap** — `development`, `staging`, and `production` modes with
+  production-safe defaults.
+- **Configuration helpers** — dot-notated `env.json` and `config/*.php`.
+  `env()` is strict and has no default; `config()` supports defaults.
+- **Path registry** — `Path` resolves real directories and fails loudly on
+  invalid or duplicate registrations.
+- **Small service layer** — immutable `Result` and action/check contracts.
 - **Quality tooling** — PHPStan Level 9 and a Pest suite.
 
 ## Requirements
 
-- PHP 8.2 or newer.
+- PHP 8.2 or newer with `ext-json`.
 - Composer.
-- pcov or Xdebug if you want code coverage.
-
-The routing example below also uses `stougeiro/router`. It is not a runtime
-dependency of Base; install it in the application when you use routing.
+- `stougeiro/router` if you use the routing example.
+- pcov or Xdebug for coverage.
 
 ## Installation
 
@@ -57,45 +60,34 @@ composer require stougeiro/base
 composer require stougeiro/router
 ```
 
-## Quick start
+## Minimal application
 
-This example adds a self-contained `HelloWorld` module to an application that
-already has its container and routing providers wired. Base does not generate
-an application skeleton; the providers used by the sample application are
-described in [Application wiring](#application-wiring).
+Base does not generate a skeleton. The application owns container and router
+wiring; the reference implementations live in `stougeiro/app` and
+`stougeiro/skeleton`.
+
+The example below assumes the application has already bound its router and
+request pipeline providers.
 
 ```text
 my-app/
 ├── app/
-│   ├── HelloWorld/
-│   │   ├── Config/
-│   │   │   ├── middlewares.php
-│   │   │   └── routes.php
-│   │   ├── Controller/
-│   │   │   └── HelloWorldController.php
-│   │   ├── Middleware/
-│   │   │   ├── HelloWorldMiddleware.php
-│   │   │   └── HelloWorldOnlyMiddleware.php
-│   │   └── HelloWorldModuleProvider.php
-│   └── Provider/
-│       ├── AppServiceProvider.php
-│       ├── CacheServiceProvider.php
-│       ├── HttpServiceProvider.php
-│       └── PipelineServiceProvider.php
+│   └── HelloWorld/
+│       ├── Config/
+│       │   └── routes.php
+│       ├── Controller/
+│       │   └── HelloWorldController.php
+│       └── HelloWorldModuleProvider.php
 ├── config/
-│   ├── app.php
-│   └── error.php
-├── env.php
+│   └── app.php
+├── env.json
 ├── public/
 │   └── index.php
 └── storage/
     └── log/
 ```
 
-Everything below `app/HelloWorld` belongs to the module. The module is not
-split across `app/Modules`, `app/routes`, or `app/Http/Controllers`.
-
-### 1. Register paths and boot the kernel
+### Entry point
 
 ```php
 <?php
@@ -119,26 +111,30 @@ $kernel->terminate();
 ```
 
 `Path::register()` requires the directory to exist. Duplicate keys and invalid
-paths throw immediately, which catches configuration mistakes early.
+paths throw immediately, catching configuration mistakes before dispatch.
 
-`Kernel::create()` installs the fallback and error bootstrap, then reads
-`app.providers` and `app.modules` from `config/app.php`.
+### Environment
 
-### 2. Define the environment
+Create `env.json` at the project root. It is data only: Base reads it with
+`file_get_contents()` and `json_decode()`, never with `include`.
 
-```php
-<?php
-
-// env.php
-return [
-    'environment' => 'development', // use 'production' outside development
-];
+```json
+{
+  "environment": "development",
+  "app": {
+    "name": "My App"
+  }
+}
 ```
 
-Only the exact value `development` enables development error handling. Any
-other value, including a missing key, is treated as production.
+`environment` is required. Invalid values, malformed JSON, or a missing file
+fall back to production.
 
-### 3. Register the module
+- `development` exposes error details and installs the development handler.
+- `staging` returns production-style responses but logs full traces.
+- `production` logs traces only for `5xx`.
+
+### Application configuration
 
 ```php
 <?php
@@ -148,10 +144,7 @@ use App\HelloWorld\HelloWorldModuleProvider;
 
 return [
     'providers' => [
-        // Application wiring. See "Application wiring" below.
-        // App\Provider\CacheServiceProvider::class,
-        // App\Provider\HttpServiceProvider::class,
-        // App\Provider\PipelineServiceProvider::class,
+        // Application providers that bind the router and request pipeline.
     ],
 
     'modules' => [
@@ -160,10 +153,10 @@ return [
 ];
 ```
 
-The module provider is the only module class listed globally. The application
-providers are covered in [Application wiring](#application-wiring).
+Providers belong to the application. Base only reads `app.providers` and
+`app.modules`.
 
-### 4. Declare the module
+### Module
 
 ```php
 <?php
@@ -179,24 +172,15 @@ final class HelloWorldModuleProvider extends ModuleProviderAbstracted
     public function configure(): void
     {
         $this->routes(__DIR__ . '/Config/routes.php');
-        $this->middlewares(__DIR__ . '/Config/middlewares.php');
     }
 }
 ```
 
-`routes()` and `middlewares()` receive absolute module paths. Moving or copying
-the `HelloWorld` directory therefore keeps the module intact.
+A module can also register a middleware map with
+`$this->middlewares(__DIR__ . '/Config/middlewares.php')`. Routes and
+middleware files stay inside the module.
 
-If the application binds `AliasManagerInterface`, the module can also register
-its own view namespace:
-
-```php
-$this->views('hello', __DIR__ . '/View');
-```
-
-View rendering is application-level; Base only exposes the registration hook.
-
-### 5. Add the route
+### Route and controller
 
 ```php
 <?php
@@ -209,91 +193,9 @@ return [
 ];
 ```
 
-A route file returns a map of `path => controller class`. A route miss raises
-`HttpException(404)`; a route pointing to a non-controller raises
-`RuntimeException`.
-
-### 6. Add module and controller middleware
-
 ```php
 <?php
 
-// app/HelloWorld/Config/middlewares.php
-use App\HelloWorld\Controller\HelloWorldController;
-use App\HelloWorld\Middleware\HelloWorldMiddleware;
-use App\HelloWorld\Middleware\HelloWorldOnlyMiddleware;
-
-return [
-    '*' => [
-        HelloWorldMiddleware::class,
-    ],
-
-    HelloWorldController::class => [
-        HelloWorldOnlyMiddleware::class,
-    ],
-];
-```
-
-`'*'` applies to every route in the module. A controller FQCN applies only to
-that controller. Module middleware runs before controller middleware, and
-repeated middleware classes are resolved once.
-
-```php
-<?php
-
-// app/HelloWorld/Middleware/HelloWorldMiddleware.php
-declare(strict_types=1);
-
-namespace App\HelloWorld\Middleware;
-
-use Closure;
-use STDW\Contract\Http\MiddlewareInterface;
-use STDW\Contract\Http\RequestInterface;
-use STDW\Contract\Http\ResponseInterface;
-
-final class HelloWorldMiddleware implements MiddlewareInterface
-{
-    public function process(
-        RequestInterface $request,
-        ResponseInterface $response,
-        Closure $next,
-    ): ResponseInterface {
-        return $next($request, $response->withHeader('X-Module', 'hello'));
-    }
-}
-```
-
-```php
-<?php
-
-// app/HelloWorld/Middleware/HelloWorldOnlyMiddleware.php
-declare(strict_types=1);
-
-namespace App\HelloWorld\Middleware;
-
-use Closure;
-use STDW\Contract\Http\MiddlewareInterface;
-use STDW\Contract\Http\RequestInterface;
-use STDW\Contract\Http\ResponseInterface;
-
-final class HelloWorldOnlyMiddleware implements MiddlewareInterface
-{
-    public function process(
-        RequestInterface $request,
-        ResponseInterface $response,
-        Closure $next,
-    ): ResponseInterface {
-        return $next($request, $response->withHeader('X-Controller', 'hello'));
-    }
-}
-```
-
-### 7. Write the controller
-
-```php
-<?php
-
-// app/HelloWorld/Controller/HelloWorldController.php
 declare(strict_types=1);
 
 namespace App\HelloWorld\Controller;
@@ -314,66 +216,12 @@ final class HelloWorldController extends Controller
 ```
 
 Controller handler methods are the lowercase HTTP verbs listed in `$allowed`.
-`OPTIONS` is answered by the base controller with `204` and an `Allow` header.
-Any other verb raises a `405` with the same header.
+`OPTIONS` is answered by the base controller. Any other verb raises a `405`
+with an `Allow` header.
 
-The response accumulated by middleware is available as `$this->response`, and
-route variables are available as request attributes:
+## Concepts and choices
 
-```php
-$id = $this->request->getAttribute('id');
-```
-
-### 8. Run it
-
-```bash
-curl -i http://localhost:8080/
-```
-
-The response body is `Hello World`, with `X-Module: hello` and
-`X-Controller: hello` set by the module middleware chain.
-
-## How the module is loaded
-
-`Kernel::create()` reads `app.modules` and instantiates each module provider.
-On the first `handle()`, providers register and boot, then each module's
-`configure()` method runs. The module loads its routes and middleware maps; the
-router is resolved lazily at dispatch time, after all modules have configured.
-
-The module is self-contained: routes, middleware, controllers, and optional
-views live inside `app/HelloWorld`, and only `HelloWorldModuleProvider` appears
-in `config/app.php`.
-
-## Application wiring
-
-Base does not ship concrete routing, cache, or view implementations. The
-application supplies them through service providers. The reference application
-and skeleton use these providers:
-
-| Provider | Responsibility |
-| --- | --- |
-| `CacheServiceProvider` | Binds `STDW\Contract\Cache\CacheInterface` to the application's cache implementation. |
-| `HttpServiceProvider` | Binds `RouteCollectionInterface` and `RouterInterface`. The router is lazy, so it snapshots routes only after modules have loaded. |
-| `PipelineServiceProvider` | Binds the middleware manager, `RoutingMiddlewareCollection`, `RoutingDispatcherMiddleware`, and `RequestHandlerInterface`; adds global middleware and sets the dispatcher as the final handler. |
-| `ViewServiceProvider` | Optional. Binds `ViewManagerInterface` and `AliasManagerInterface` when the application uses views. |
-| `AppServiceProvider` | Application-specific services. |
-
-If you wire the container manually, the minimum bindings used by the routing
-pipeline are:
-
-```text
-STDW\Contract\Cache\CacheInterface
-STDW\Contract\Http\Router\RouteCollectionInterface
-STDW\Contract\Http\Router\RouterInterface
-Sourcerer\Http\RoutingMiddlewareCollection
-Sourcerer\Http\RoutingDispatcherMiddleware
-STDW\Contract\Http\RequestHandlerInterface
-```
-
-The reference providers belong to the application or skeleton, not to
-`stougeiro/base`.
-
-## Request lifecycle
+### Kernel lifecycle
 
 ```text
 Kernel::create()
@@ -394,50 +242,45 @@ Kernel::terminate()
 └── ServiceManager::terminate()
 ```
 
-Under FPM the kernel is created and booted once per request. Do not reuse it
-across requests in a long-running runtime.
+Providers register and boot first; modules configure only after services are
+ready. The kernel is created and booted once per request under FPM. Reusing it
+across requests in a long-running runtime is not supported.
 
-## Routing details
+### Modules without discovery
 
-- Routes are arrays of `path => controller class` returned from a PHP file.
-  `stougeiro/router` supports placeholders such as `/users/{id:num}`; available
-  types include `any`, `num`, `word`, `slug`, `color`, `year`, `month`, `day`,
-  and `token`.
-- Route variables become request attributes before the controller runs.
-- A route miss raises `HttpException(404)`.
-- A route pointing to a class that does not implement `ControllerInterface`
-  raises `RuntimeException`.
-- Module middleware runs before controller middleware. Duplicate middleware
-  classes are resolved only once.
-- The kernel converts throwables into error responses. If the error handler
-  itself fails, the fatal fallback emits a minimal HTML `500` and terminates
-  the request.
+A module is self-contained: routes, middleware, and controllers live together.
+Configuration lists only the module provider. This keeps scanning and implicit
+registration out of the core, while routes and middleware remain explicit and
+easy to inspect.
 
-## Error handling and security
+### Environment vs configuration
 
-`Kernel::create()` runs `Fallback::register()` and `ErrorHandler::bootstrap()`
-before reading configuration. `bootstrap()` first applies a production-safe
-baseline, then reads `env('environment')`; only in development does it enable
-display errors and install the error handler.
+`env.json` is for environment-specific values and secrets. It is JSON so a
+compromised or accidentally executable file cannot run PHP code. Base rejects
+symlinks and files larger than 64 KiB, requires an object root, and limits JSON
+depth.
 
-`ErrorHandler` turns any throwable into a response:
+`config/*.php` is for application configuration that benefits from PHP
+expressions and defaults. `env()` is strict and throws on missing values;
+`config()` accepts an explicit default.
 
-- `HttpException` provides status `400`–`599` and optional headers.
-- HTML or JSON is selected by `config('error.mode')` and the request's
-  `Accept` header.
-- Development responses include the error message, a source snippet, and a
-  stack trace. Production `5xx` responses expose only a generic reason.
-- `5xx` responses include an `X-Error-Id` and a reference ID in the body.
-- Responses use `Cache-Control: no-store` and
-  `X-Content-Type-Options: nosniff`.
-- Logs include the request method, path, redacted query, client IP, and user
-  agent. The logger is resolved from the container; if it is unavailable or
-  invalid, logging falls back to `error_log`.
+### Error strategy
 
-`Fallback` is the last line of defense. Its shutdown guard catches fatal errors
-and emits a self-contained `500` page even when the container, configuration,
-or autoloader is broken. It clears output buffers, logs the error, sends safe
-headers, and exits with status `1`.
+The error handler is installed before application configuration so a broken
+boot still gets a safe response.
+
+| Behavior | `development` | `staging` | `production` |
+| --- | --- | --- | --- |
+| Display errors | yes | no | no |
+| Details in response | yes | no | no |
+| Trace in log | `5xx` | all errors | `5xx` |
+
+`HttpException` carries status `400`–`599` and validated headers. `5xx`
+responses include an `X-Error-Id`; logs include the request path, redacted
+query, client IP, and user agent.
+
+`Fallback` is the last line of defense. It can emit a minimal `500` even when
+the container, configuration, or autoloader is unavailable.
 
 Error responses can be configured in `config/error.php`:
 
@@ -461,25 +304,15 @@ return [
 ];
 ```
 
-- `mode` selects the default format. `Accept: application/json` also selects
-  JSON.
-- `messages` can override the title and message for any status.
-- `snippet.pad` controls how many source lines appear around an error in
-  development.
-- `log.redact` adds query keys to the built-in sensitive list. Matching is
-  case-insensitive and substring-based, so `api_key` and `accessToken` are both
-  redacted.
+### What Base does not include
 
-Security notes:
+- A concrete router or route repository.
+- A cache implementation.
+- A view engine or view registration.
+- Application service providers or a project skeleton.
 
-- `X-Forwarded-For` and `Client-IP` are trusted only for logging. They are
-  client-controlled and must never be used for authorization decisions.
-- Keep `env.php`, `config/`, and logs outside the public document root, or
-  otherwise deny direct web access to them.
-- `harden()` uses `ini_set()` and cannot override a server that disables it.
-  Keep production `php.ini` settings correct as well.
-- `Path`, `env()`, `config()`, and the kernel are per-request under FPM. Do not
-  reuse a booted kernel across requests in long-running runtimes.
+Those are application decisions. The reference wiring and expansion patterns
+belong in `stougeiro/app` and `stougeiro/skeleton`.
 
 ## Configuration helpers
 
@@ -493,34 +326,38 @@ Path::register('logs', 'storage/log/', 'root');
 $root = Path::get('root');
 ```
 
-`env('app.name')` reads `env.php`; `config('app.providers')` reads
-`config/app.php`. Both helpers use dot notation, cache their file contents for
-the lifetime of the process, and throw when a key is missing unless a default
-is supplied:
+`env('app.name')` reads `env.json`; `config('app.providers')` reads
+`config/app.php`. Both use dot notation and cache file contents for the process.
 
 ```php
-$name = env('app.name', 'My App');
+$name = env('app.name');
 $providers = config('app.providers', []);
 ```
 
-`Path::register()` resolves the path with `realpath()` and stores it with a
-trailing directory separator. Keys live for the whole process, a duplicate key
-fails loudly, and there is no unregister API because FPM gives each request a
-fresh process.
+`Path`, `env()`, `config()`, and the kernel are per-request under FPM.
 
-## Logging
+## Security notes
+
+- Keep `env.json`, `config/`, and logs outside the public document root, or deny
+  direct web access to them.
+- `env.json` prevents code execution, but it still contains plaintext secrets.
+  Use `0400`/`0440` permissions, a non-writable project root, and atomic deploys.
+- Add `env.json` to `.gitignore` and `.dockerignore`; commit an
+  `env.example.json` with placeholders instead.
+- Validate types and allowlist any environment value used in a class name,
+  path, or command.
+- `harden()` uses `ini_set()` and cannot override a server that disables it.
+  Keep production `php.ini` correct as well.
+- `X-Forwarded-For` and `Client-IP` are for logging only, never authorization.
+
+## Logging and services
 
 Bind `LogInterface` to `Sourcerer\Log\Log` to write to
-`Path::get('logs') . 'app.log'`, or pass a full file path to its constructor.
-The logger writes one line per entry, appends JSON context when present, and
-falls back to `error_log` if the file cannot be written.
+`Path::get('logs') . 'app.log'`, or pass a full file path. The logger appends
+JSON context, truncates oversized entries, and falls back to `error_log` when
+the file cannot be written.
 
-To change buffering, rotation, or the destination, implement `LogInterface` and
-bind your implementation in a service provider.
-
-## Service layer
-
-`Result` is an immutable outcome for application services:
+`Result` is an immutable service outcome:
 
 ```php
 use Sourcerer\Service\Result;
@@ -529,46 +366,12 @@ $result = Result::success(['id' => 42]);
 $result = Result::failure(null, ['User not found']);
 
 $result->isSuccess();
-$result->data();     // immutable payload or null
-$result->messages(); // list<string>
+$result->data();
+$result->messages();
 ```
 
-`ActionServiceInterface::handle(array $input): ResultInterface` and
-`CheckServiceInterface::check(array $input): bool` are small contracts for
-action and validation services.
-
-## Project structure
-
-```text
-src/
-├── Config.php              config() helper
-├── Env.php                 env() helper
-├── Path.php                realpath-based path registry
-├── Error/
-│   ├── ErrorHandler.php    throwable-to-response handling
-│   ├── ErrorRenderer.php   HTML/JSON rendering
-│   ├── Fallback.php        last-resort fatal 500
-│   └── Exception/
-│       └── HttpException.php
-├── Http/
-│   ├── Kernel.php
-│   ├── RoutingDispatcherMiddleware.php
-│   ├── RoutingMiddlewareCollection.php
-│   └── Controller/
-│       ├── Controller.php
-│       └── ControllerInterface.php
-├── Log/
-│   ├── Log.php
-│   └── LogInterface.php
-├── Module/
-│   ├── ModuleProviderAbstracted.php
-│   └── ModuleProviderInterface.php
-└── Service/
-    ├── ActionServiceInterface.php
-    ├── CheckServiceInterface.php
-    ├── Result.php
-    └── ResultInterface.php
-```
+`ActionServiceInterface` and `CheckServiceInterface` are small contracts for
+application services.
 
 ## Testing
 
