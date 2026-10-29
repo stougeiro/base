@@ -1,6 +1,6 @@
 {
     "name": "stougeiro/base",
-    "description": "",
+    "description": "Opinionated PHP 8.2 foundation for small HTTP applications: request kernel, routing, controllers, module middleware, error handling, configuration and logging.",
     "type": "library",
     "minimum-stability": "stable",
     "prefer-stable": true,
@@ -12,6 +12,17 @@
         }
     ],
     "keywords": [
+        "php82",
+        "http",
+        "microframework",
+        "kernel",
+        "routing",
+        "router",
+        "middleware",
+        "controllers",
+        "error-handling",
+        "logging",
+        "configuration"
     ],
     "support": {
         "issues": "https://github.com/stougeiro/base/issues",
