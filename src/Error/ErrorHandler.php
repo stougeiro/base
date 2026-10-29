@@ -54,6 +54,10 @@ final class ErrorHandler
 
     private const PRODUCTION = 'production';
 
+    private const LOG_MESSAGE_LIMIT = 4096;
+
+    private const LOG_FIELD_LIMIT = 2048;
+
 
     private readonly string $environment;
 
@@ -135,32 +139,33 @@ final class ErrorHandler
         try {
             $body = $this->renderer->render($error, $id, $status, $this->development, $json, $override);
         } catch (Throwable $failure) {
-            error_log('error renderer: ' . $failure::class . ': ' . self::clean($failure->getMessage()));
+            error_log('error renderer: '. $failure::class .': '. self::clean($failure->getMessage()));
 
             $status = 500;
             $body = $json
-                ? '{"status":"error","id":"' . $id . '","code":500,"title":"Internal Server Error","message":"Internal Server Error"}'
+                ? '{"status":"error","id":"'. $id .'","code":500,"title":"Internal Server Error","message":"Internal Server Error"}'
                 : Fallback::document($id);
         }
 
+        $response = $response->withStatus($status);
+
+        if ($http !== null) {
+            foreach ($http->headers() as $name => $value) {
+                if (preg_match('/\A[A-Za-z0-9-]{1,100}\z/', $name) !== 1) {
+                    continue;
+                }
+
+                $response = $response->withHeader($name, self::clean($value));
+            }
+        }
+
         $response = $response
-            ->withStatus($status)
             ->withHeader('Cache-Control', 'no-store')
             ->withHeader('X-Content-Type-Options', 'nosniff')
             ->withHeader('Content-Type', $json ? 'application/json; charset=utf-8' : 'text/html; charset=utf-8');
 
         if ($status >= 500) {
             $response = $response->withHeader('X-Error-Id', $id);
-        }
-
-        if ($http !== null) {
-            foreach ($http->headers() as $name => $value) {
-                if (preg_match('/^[A-Za-z0-9-]+$/', $name) !== 1) {
-                    continue;
-                }
-
-                $response = $response->withHeader($name, self::clean($value));
-            }
         }
 
         return $response->withBody($body);
@@ -185,7 +190,6 @@ final class ErrorHandler
             self::DEVELOPMENT => self::DEVELOPMENT,
             self::STAGING => self::STAGING,
             self::PRODUCTION => self::PRODUCTION,
-
             default => self::PRODUCTION,
         };
     }
@@ -248,7 +252,14 @@ final class ErrorHandler
 
     private static function clean(string $value): string
     {
-        return str_replace(["\r", "\n", "\0"], ' ', $value);
+        return preg_replace('/[\x00-\x1F\x7F]+/', ' ', $value) ?? $value;
+    }
+
+    private static function limit(string $value, int $limit = self::LOG_FIELD_LIMIT): string
+    {
+        $value = self::clean($value);
+
+        return strlen($value) > $limit ? substr($value, 0, $limit) .'...' : $value;
     }
 
 
@@ -257,7 +268,7 @@ final class ErrorHandler
      */
     private function log(string $id, Throwable $error, RequestInterface $request, int $status): void
     {
-        $message = self::clean($error->getMessage());
+        $message = self::limit($error->getMessage(), self::LOG_MESSAGE_LIMIT);
 
         try {
             $uri = $request->getUri();
@@ -266,24 +277,24 @@ final class ErrorHandler
                 'id' => $id,
                 'status' => $status,
                 'type' => $error::class,
-                'file' => $error->getFile(),
+                'file' => self::limit($error->getFile()),
                 'line' => $error->getLine(),
-                'method' => $request->getMethod(),
-                'path' => self::clean($uri->getPath()),
-                'query' => http_build_query($this->redact($uri->getQuery())),
-                'ip' => $this->clientIp($request),
-                'ua' => self::clean($request->getHeader('User-Agent') ?? ''),
+                'method' => self::limit($request->getMethod()),
+                'path' => self::limit($uri->getPath()),
+                'query' => self::limit(http_build_query($this->redact($uri->getQuery()))),
+                'ip' => self::limit($this->clientIp($request)),
+                'ua' => self::limit($request->getHeader('User-Agent') ?? ''),
             ];
 
             if ($status >= 500 || $this->environment === self::STAGING) {
                 // harden() hides argument values outside development.
-                $context['trace'] = $error->getTraceAsString();
+                $context['trace'] = self::limit($error->getTraceAsString(), self::LOG_MESSAGE_LIMIT);
             }
 
             $logger = $this->container->get(LogInterface::class);
 
             if ( ! $logger instanceof LogInterface) {
-                throw new RuntimeException('log service does not implement ' . LogInterface::class);
+                throw new RuntimeException('log service does not implement '. LogInterface::class);
             }
 
             $logger->error($message, $context);
@@ -292,7 +303,7 @@ final class ErrorHandler
             // fall through to error_log
         }
 
-        error_log($message . ' [' . $id . ']');
+        error_log($message .' ['. $id .']');
     }
 
     /**

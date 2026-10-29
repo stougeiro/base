@@ -110,11 +110,11 @@ final class Fallback
         $reference = htmlspecialchars($id, \ENT_QUOTES | \ENT_SUBSTITUTE, 'UTF-8');
 
         return '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
-            . '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
-            . '<title>500 ' . self::REASON . '</title>'
-            . '<style>html{color-scheme:light dark}body{align-items:center;display:flex;font-family:sans-serif;justify-content:center;margin:0;min-height:100vh;text-align:center}main{padding:2rem}h1{font-size:250%;margin:0}h2{font-weight:500}.reference{opacity:.7}</style>'
-            . '</head><body><main><h1>500</h1><h2>' . self::REASON . '</h2>'
-            . '<p class="reference">Reference: ' . $reference . '</p></main></body></html>';
+            .'<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+            .'<title>500 '. self::REASON .'</title>'
+            .'<style>html{color-scheme:light dark}body{align-items:center;display:flex;font-family:sans-serif;justify-content:center;margin:0;min-height:100vh;text-align:center}main{padding:2rem}h1{font-size:250%;margin:0}h2{font-weight:500}.reference{opacity:.7}</style>'
+            .'</head><body><main><h1>500</h1><h2>'. self::REASON .'</h2>'
+            .'<p class="reference">Reference: '. $reference .'</p></main></body></html>';
     }
 
     /**
@@ -151,7 +151,7 @@ final class Fallback
             $id,
             $error::class,
             self::clean($error->getMessage()),
-            $error->getFile(),
+            self::clean($error->getFile()),
             $error->getLine(),
         ));
     }
@@ -166,11 +166,11 @@ final class Fallback
         header('Content-Type: text/html; charset=utf-8');
         header('Cache-Control: no-store');
         header('X-Content-Type-Options: nosniff');
-        header('X-Error-Id: ' . $id);
+        header('X-Error-Id: '. $id);
     }
 
     private static function clean(string $value): string
     {
-        return str_replace(["\r", "\n", "\0"], ' ', $value);
+        return preg_replace('/[\x00-\x1F\x7F]+/', ' ', $value) ?? $value;
     }
 }

@@ -6,10 +6,7 @@ use RuntimeException;
 
 
 /**
- * Global path accessor for the application.
- *
- * Provides a way to register and resolve directory paths without relying
- * on hardcoded constants or global state.
+ * Centralizes path registration and resolution for the process.
  */
 final class Path
 {
@@ -26,6 +23,10 @@ final class Path
      */
     public static function register(string $key, string $path, string $from = ''): void
     {
+        if ($key === '') {
+            throw new RuntimeException('Path key must not be empty');
+        }
+
         if (isset(self::$paths[$key])) {
             throw new RuntimeException("Path key '{$key}' is already registered");
         }
@@ -38,7 +39,7 @@ final class Path
 
         $realpath = realpath($from . $path);
 
-        if ($realpath === false) {
+        if ($realpath === false || ! is_dir($realpath)) {
             throw new RuntimeException("Path key '{$key}' is not valid: {$from}{$path}");
         }
 
@@ -51,7 +52,7 @@ final class Path
     public static function get(string $key): string
     {
         if ( ! isset(self::$paths[$key])) {
-            throw new RuntimeException("Path key '{$key}' not registered.");
+            throw new RuntimeException("Path key '{$key}' not registered");
         }
 
         return self::$paths[$key];

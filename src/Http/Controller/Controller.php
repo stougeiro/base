@@ -34,8 +34,6 @@ abstract class Controller implements ControllerInterface
 
     /**
      * Answers OPTIONS with the Allow header.
-     *
-     * @return ResponseInterface
      */
     final public function options(): ResponseInterface
     {
@@ -47,10 +45,7 @@ abstract class Controller implements ControllerInterface
     }
 
     /**
-     * @param RequestInterface $request
      * @param ResponseInterface $response The response accumulated by the middlewares.
-     * @param Closure $next
-     * @return ResponseInterface
      */
     final public function process(RequestInterface $request, ResponseInterface $response, Closure $next): ResponseInterface
     {
@@ -72,8 +67,6 @@ abstract class Controller implements ControllerInterface
 
     /**
      * Throws a 405 carrying the Allow header.
-     *
-     * @return ResponseInterface
      */
     final protected function notAllowed(): ResponseInterface
     {
@@ -82,8 +75,6 @@ abstract class Controller implements ControllerInterface
 
     /**
      * Allowed verbs plus OPTIONS, uppercased.
-     *
-     * @return string
      */
     final protected function allowHeader(): string
     {

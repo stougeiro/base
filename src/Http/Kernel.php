@@ -14,9 +14,10 @@ use STDW\Http\Response;
 use Sourcerer\Error\ErrorHandler;
 use Sourcerer\Error\Fallback;
 use Sourcerer\Module\ModuleProviderInterface;
-use function Sourcerer\config;
 
 use Throwable;
+
+use function Sourcerer\config;
 
 
 /**
@@ -103,14 +104,15 @@ final class Kernel
             $handler = $this->container->get(RequestHandlerInterface::class);
 
             return $handler->handle($request, $response);
-        }
-        catch (Throwable $error) {
+        } catch (Throwable $error) {
             try {
                 return (new ErrorHandler($this->container))
                     ->handle($error, $request, $response);
             }
             catch (Throwable $fatal) {
-                error_log('error handler: '. $fatal::class .': '. str_replace(["\r", "\n", "\0"], ' ', $fatal->getMessage()));
+                $message = preg_replace('/[\x00-\x1F\x7F]+/', ' ', $fatal->getMessage()) ?? $fatal->getMessage();
+
+                error_log('error handler: '. $fatal::class .': '. $message);
 
                 Fallback::emit($error);
             }

@@ -24,6 +24,10 @@ final class Log implements LogInterface
         self::DEBUG => 'DEBUG',
     ];
 
+    private const MESSAGE_LIMIT = 4096;
+
+    private const CONTEXT_LIMIT = 8192;
+
 
     public function __construct(
         private readonly ?string $file = null,
@@ -69,13 +73,23 @@ final class Log implements LogInterface
     {
         $date = date('[Y-m-d H:i:s] ');
         $label = self::LABELS[$level] ?? 'DEBUG';
-        $line = $date . $label .' '. self::clean($message);
+        $message = self::clean($message);
+
+        if (strlen($message) > self::MESSAGE_LIMIT) {
+            $message = substr($message, 0, self::MESSAGE_LIMIT) .'...';
+        }
+
+        $line = $date . $label .' '. $message;
 
         if ( ! empty($context)) {
             $json = json_encode($context, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR);
 
             if ($json !== false) {
-                $line .= ' ' . $json;
+                if (strlen($json) > self::CONTEXT_LIMIT) {
+                    $json = '{"_truncated":true,"bytes":'. strlen($json) .'}';
+                }
+
+                $line .= ' '. $json;
             }
         }
 
@@ -88,7 +102,7 @@ final class Log implements LogInterface
                 return;
             }
         } catch (Throwable $e) {
-            error_log($date . 'ERROR ' . self::clean($e->getMessage()));
+            error_log($date .'ERROR '. self::clean($e->getMessage()));
         }
 
         error_log($formatted);
@@ -97,6 +111,6 @@ final class Log implements LogInterface
 
     private static function clean(string $value): string
     {
-        return str_replace(["\r", "\n", "\0"], ' ', $value);
+        return preg_replace('/[\x00-\x1F\x7F]+/', ' ', $value) ?? $value;
     }
 }

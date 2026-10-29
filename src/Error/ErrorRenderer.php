@@ -32,6 +32,8 @@ final class ErrorRenderer
         504 => 'Gateway Timeout',
     ];
 
+    private const SNIPPET_LINE_LIMIT = 500;
+
     private const STYLE = 'html{color-scheme:light dark}body{align-items:center;display:flex;font-family:sans-serif;justify-content:center;margin:0;min-height:100vh;text-align:center}main{padding:2rem;max-width:80rem}h1{font-size:250%;margin:0}h2{font-weight:500}.reference{opacity:.7}table{border-collapse:collapse;margin:1rem auto 0;text-align:left;font-size:.85rem}td{padding:.1rem .5rem;vertical-align:top}td:first-child{opacity:.5;text-align:right;user-select:none}.hit{background:rgba(255,0,0,.15)}pre{margin:0;white-space:pre-wrap;word-break:break-word}';
 
     private readonly int $snippetPad;
@@ -74,20 +76,20 @@ final class ErrorRenderer
         $message = $this->message($error, $status, $development, $override);
 
         $detail = $message !== '' && $message !== $title
-            ? '<p>' . self::escape($message) . '</p>'
+            ? '<p>'. self::escape($message) .'</p>'
             : '';
 
         $reference = $status >= 500
-            ? '<p class="reference">Reference: ' . self::escape($id) . '</p>'
+            ? '<p class="reference">Reference: '. self::escape($id) .'</p>'
             : '';
 
         $snippet = $development ? $this->snippet($error->getFile(), $error->getLine()) : '';
-        $trace = $development ? '<pre>' . self::escape($error->getTraceAsString()) . '</pre>' : '';
+        $trace = $development ? '<pre>'. self::escape($error->getTraceAsString()) .'</pre>' : '';
 
-        $body = '<main><h1>' . $status . '</h1><h2>' . self::escape($title) . '</h2>'
-            . $detail . $reference . $snippet . $trace . '</main>';
+        $body = '<main><h1>'. $status .'</h1><h2>'. self::escape($title) .'</h2>'
+            . $detail . $reference . $snippet . $trace .'</main>';
 
-        return $this->document($status . ' ' . $title, $body);
+        return $this->document($status .' '. $title, $body);
     }
 
     /**
@@ -171,22 +173,28 @@ final class ErrorRenderer
                 break;
             }
 
-            $code = $handle->current();
+            $current = $handle->current();
+            $code = rtrim(is_string($current) ? $current : '');
+
+            if (strlen($code) > self::SNIPPET_LINE_LIMIT) {
+                $code = substr($code, 0, self::SNIPPET_LINE_LIMIT) .'...';
+            }
+
             $class = $number === $line ? ' class="hit"' : '';
-            $rows .= '<tr' . $class . '><td>' . $number . '</td><td><pre>' . self::escape(rtrim(is_string($code) ? $code : '')) . '</pre></td></tr>';
+            $rows .= '<tr'. $class .'><td>'. $number .'</td><td><pre>'. self::escape($code) .'</pre></td></tr>';
 
             $handle->next();
         }
 
-        return $rows === '' ? '' : '<table>' . $rows . '</table>';
+        return $rows === '' ? '' : '<table>'. $rows .'</table>';
     }
 
     private function document(string $title, string $body): string
     {
         return '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
-            . '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
-            . '<title>' . self::escape($title) . '</title>'
-            . '<style>' . self::STYLE . '</style>'
-            . '</head><body>' . $body . '</body></html>';
+            .'<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+            .'<title>'. self::escape($title) .'</title>'
+            .'<style>'. self::STYLE .'</style>'
+            .'</head><body>'. $body .'</body></html>';
     }
 }

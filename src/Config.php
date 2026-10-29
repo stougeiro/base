@@ -28,6 +28,10 @@ function config(string $path, mixed $default = null): mixed
     $segments = explode('.', $path);
     $filename = $segments[0];
 
+    if ($filename === '' || preg_match('/\A[A-Za-z0-9_-]{1,64}\z/', $filename) !== 1) {
+        throw new RuntimeException('config: invalid file name');
+    }
+
     if ( ! array_key_exists($filename, $items)) {
         try {
             $configPath = Path::get('config');
@@ -40,8 +44,14 @@ function config(string $path, mixed $default = null): mixed
         }
 
         $file = realpath($configPath . $filename .'.php');
+        $prefix = rtrim($configPath, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
 
-        if ($file === false) {
+        if (
+               $file === false
+            || ! str_starts_with($file, $prefix)
+            || ! is_file($file)
+            || ! is_readable($file)
+        ) {
             if ($hasDefault) {
                 return $default;
             }

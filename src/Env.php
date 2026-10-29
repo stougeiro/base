@@ -2,8 +2,8 @@
 
 namespace Sourcerer;
 
-use RuntimeException;
 use JsonException;
+use RuntimeException;
 
 
 /**
@@ -36,7 +36,7 @@ function env(string $path): mixed
 
     if ( ! array_key_exists($root, $items)) {
         $items[$root] = (static function (string $root): array {
-            $expected = $root . 'env.json';
+            $expected = $root .'env.json';
 
             if (is_link($expected)) {
                 throw new RuntimeException("env: file 'env.json' must not be a symbolic link");
@@ -48,13 +48,14 @@ function env(string $path): mixed
                 throw new RuntimeException("env: file 'env.json' not found or not readable");
             }
 
+            $maxBytes = 64 * 1024;
             $size = filesize($file);
 
-            if ($size === false || $size > 1_048_576) {
-                throw new RuntimeException("env: file 'env.json' is too large");
+            if ($size === false || $size > $maxBytes) {
+                throw new RuntimeException("env: file 'env.json' exceeds 64 KiB");
             }
 
-            $raw = file_get_contents($file);
+            $raw = file_get_contents($file, false, null, 0, $maxBytes);
 
             // Defensive: is_readable() passed, so this only guards a TOCTOU/I/O failure.
             // @codeCoverageIgnoreStart
