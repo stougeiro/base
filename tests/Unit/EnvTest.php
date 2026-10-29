@@ -93,8 +93,19 @@ test('env rejects a root that is not a JSON object', function (string $json) {
     }
 })->with(['[]', '[1,2]', '42', '"value"', 'null', 'true']);
 
+test('env accepts a file at the 64 KiB limit', function () {
+    $json = '{"value":"ok"}';
+    $dir = env_fixture($json . str_repeat(' ', (64 * 1024) - strlen($json)));
+
+    try {
+        expect(env('value'))->toBe('ok');
+    } finally {
+        remove_tree($dir);
+    }
+});
+
 test('env rejects an oversized file', function () {
-    $dir = env_fixture(str_repeat('x', 1_048_577));
+    $dir = env_fixture(str_repeat('x', (64 * 1024) + 1));
 
     try {
         expect(fn () => env('value'))->toThrow(RuntimeException::class);

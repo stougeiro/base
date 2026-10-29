@@ -96,6 +96,27 @@ test('error renderer snippet is empty when the source cannot be opened', functio
     }
 });
 
+test('error renderer truncates oversized snippet lines', function () {
+    $line = str_repeat('a', 600) . 'TAIL_MARKER';
+    $file = temp_php('<?php $value = "' . $line . '"; throw new RuntimeException("boom");');
+    $error = null;
+
+    try {
+        try {
+            include $file;
+        } catch (Throwable $e) {
+            $error = $e;
+        }
+
+        $html = (new ErrorRenderer())->render($error, 'id', 500, true, false);
+    } finally {
+        remove_file($file);
+    }
+
+    expect($html)->toContain('...')
+        ->and($html)->not->toContain('TAIL_MARKER');
+});
+
 test('error renderer json in production mode hides details', function () {
     $json = (new ErrorRenderer())->render(new RuntimeException('Hidden error'), 'ERROR003', 500, false, true);
     $decoded = json_decode($json, true);

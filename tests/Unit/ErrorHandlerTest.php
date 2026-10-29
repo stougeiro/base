@@ -263,15 +263,38 @@ test('error handler ignores a non-array override for the status', function () {
         ->and($response->getBody())->toContain('Teapot');
 });
 
-test('error handler ignores invalid header names from HttpException', function () {
+test('error handler keeps security headers over HttpException headers', function () {
     $response = $this->handler->handle(
-        new HttpException(400, 'Bad Request', ['Bad Header' => 'value', 'X-Valid' => 'ok']),
+        new HttpException(500, 'Boom', [
+            'Cache-Control' => 'public, max-age=3600',
+            'Content-Type' => 'text/plain',
+            'X-Content-Type-Options' => 'sniff',
+            'X-Error-Id' => 'FAKE',
+            'Allow' => 'GET',
+        ]),
         new FakeRequest('GET', 'http://localhost/', ['Accept' => 'text/html']),
         new Response(),
     );
 
-    expect($response->hasHeader('Bad Header'))->toBeFalse()
-        ->and($response->getHeader('X-Valid'))->toBe('ok');
+    expect($response->getHeader('Cache-Control'))->toBe('no-store')
+        ->and($response->getHeader('Content-Type'))->toContain('text/html')
+        ->and($response->getHeader('X-Content-Type-Options'))->toBe('nosniff')
+        ->and($response->getHeader('X-Error-Id'))->not->toBe('FAKE')
+        ->and($response->getHeader('Allow'))->toBe('GET');
+});
+
+test('error handler truncates large log fields', function () {
+    $request = new FakeRequest('GET', 'http://localhost/', [
+        'Accept' => 'text/html',
+        'User-Agent' => str_repeat('a', 2500) . 'TAIL_MARKER',
+    ]);
+
+    $this->handler->handle(new RuntimeException(str_repeat('m', 5000)), $request, new Response());
+
+    $log = (string) file_get_contents($this->logFile);
+
+    expect($log)->toContain('...')
+        ->and($log)->not->toContain('TAIL_MARKER');
 });
 
 test('error handler logs Client-IP when X-Forwarded-For is absent', function () {

@@ -72,6 +72,36 @@ test('config throws when no default and key missing', function () {
     }
 });
 
+test('config rejects invalid filenames even with a default', function (string $name) {
+    $dir = temp_dir('config_');
+    Path::register('config', $dir);
+
+    try {
+        expect(fn () => config($name, 'fallback'))->toThrow(RuntimeException::class);
+    } finally {
+        remove_dir($dir);
+    }
+})->with([
+    'empty' => '',
+    'traversal' => '../secret',
+    'separator' => 'bad/name',
+]);
+
+test('config rejects a file outside the config directory', function () {
+    $dir = temp_dir('config_');
+    $outside = temp_dir('config_outside_');
+    file_put_contents($outside . '/secret.php', '<?php return [];');
+    symlink($outside . '/secret.php', $dir . '/linked.php');
+    Path::register('config', $dir);
+
+    try {
+        expect(fn () => config('linked'))->toThrow(RuntimeException::class);
+    } finally {
+        remove_tree($dir);
+        remove_tree($outside);
+    }
+});
+
 test('config with single segment returns entire file array', function () {
     $dir = temp_dir('config_');
     file_put_contents($dir . '/cf_single.php', '<?php return ["key" => "value"];');

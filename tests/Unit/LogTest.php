@@ -110,6 +110,23 @@ test('log cleans newlines from message', function () {
     }
 });
 
+test('log truncates oversized messages and context', function () {
+    $tempFile = sys_get_temp_dir() . '/app_' . uniqid() . '.log';
+
+    try {
+        $log = new Log($tempFile);
+        $log->error(str_repeat('m', 5000), ['blob' => str_repeat('c', 9000)]);
+
+        $content = (string) file_get_contents($tempFile);
+
+        expect($content)->toContain('...')
+            ->and($content)->toContain('"_truncated":true')
+            ->and($content)->not->toContain(str_repeat('c', 9000));
+    } finally {
+        remove_file($tempFile);
+    }
+});
+
 test('log falls back to error_log when the file cannot be written', function () {
     $dir = temp_dir('log_');
     $phpLog = $dir . '/php.log';

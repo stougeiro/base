@@ -43,6 +43,26 @@ test('path registration with invalid path throws', function () {
         ->toThrow(RuntimeException::class);
 });
 
+test('path registration rejects an empty key', function () {
+    $dir = temp_dir('path_');
+
+    try {
+        expect(fn () => Path::register('', $dir))->toThrow(RuntimeException::class);
+    } finally {
+        remove_dir($dir);
+    }
+});
+
+test('path registration rejects a file', function () {
+    $file = temp_php('<?php return [];');
+
+    try {
+        expect(fn () => Path::register('file', $file))->toThrow(RuntimeException::class);
+    } finally {
+        remove_file($file);
+    }
+});
+
 test('path registration with unknown $from key throws', function () {
     expect(fn () => Path::register('bad', '/sub', 'unknown_key'))
         ->toThrow(RuntimeException::class);

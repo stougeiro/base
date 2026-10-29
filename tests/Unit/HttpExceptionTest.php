@@ -30,6 +30,17 @@ test('http exception with previous throwable', function () {
     expect($e->getPrevious())->toBe($previous);
 });
 
+test('http exception rejects invalid headers', function (array $headers) {
+    expect(fn () => new HttpException(400, '', $headers))
+        ->toThrow(InvalidArgumentException::class);
+})->with([
+    'non-string value' => [['X-Test' => ['bad']]],
+    'invalid name' => [['Bad Header' => 'value']],
+    'empty name' => [['' => 'value']],
+    'control character' => [['X-Test' => "bad\r\nvalue"]],
+    'oversized value' => [['X-Test' => str_repeat('a', 8193)]],
+]);
+
 test('http exception throws on status below 400', function () {
     expect(fn () => new HttpException(399))->toThrow(InvalidArgumentException::class);
 });

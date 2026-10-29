@@ -3,10 +3,8 @@
 use Sourcerer\Http\RoutingMiddlewareCollection;
 use STDW\Container\Container;
 use STDW\Contract\Http\Router\RouteCollectionInterface;
-use STDW\Contract\View\AliasManagerInterface;
 use STDW\Http\Router\RouteCollection;
 use Tests\Fixtures\ArrayCache;
-use Tests\Fixtures\FakeAliasManager;
 use Tests\Fixtures\OkController;
 use Tests\Fixtures\PassMiddleware;
 use Tests\Fixtures\Provider;
@@ -40,17 +38,4 @@ test('module provider registers middlewares through the collection', function ()
 
     expect($resolved)->toHaveCount(1)
         ->and($resolved[0])->toBeInstanceOf(PassMiddleware::class);
-});
-
-test('module provider registers view aliases through the manager', function () {
-    $container = new Container();
-    $container->singleton(AliasManagerInterface::class, fn () => new FakeAliasManager());
-
-    $provider = new Provider($container);
-    $provider->registerViews('admin', '/tmp/views');
-
-    $aliases = $container->get(AliasManagerInterface::class);
-
-    expect($aliases->alias('admin'))->toBe('/tmp/views/')
-        ->and($aliases->resolveAlias('admin:home'))->toBe('/tmp/views/home');
 });

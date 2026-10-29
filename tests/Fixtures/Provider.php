@@ -20,9 +20,4 @@ final class Provider extends ModuleProviderAbstracted
     {
         $this->middlewares($file);
     }
-
-    public function registerViews(string $alias, string $path): void
-    {
-        $this->views($alias, $path);
-    }
 }
