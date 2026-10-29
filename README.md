@@ -23,10 +23,7 @@ The goal is a small, explicit core that is easy to inspect, replace, and test.
 - **Small service layer**: immutable `Result` and action/check contracts.
 - **Quality tooling**: PHPStan Level 9 and a Pest suite.
 
-## 📋 Requirements
-
-- PHP 8.2 or newer.
-- `ext-json`.
+---
 
 ## 📦 Installation
 
@@ -36,7 +33,12 @@ Install via Composer:
 composer require stougeiro/base
 ```
 
-## 🚫 What Base Does Not Include
+### Requirements
+
+- PHP 8.2 or newer.
+- `ext-json`.
+
+### What Base Does Not Include
 
 - A concrete router or route repository.
 - A cache implementation.
@@ -134,6 +136,8 @@ The routing example uses `stougeiro/router`. It is an application dependency, no
 
 For complete modules, controllers, middleware, and provider wiring, use [stougeiro/app](https://github.com/stougeiro/app) or [stougeiro/skeleton](https://github.com/stougeiro/skeleton).
 
+---
+
 ## 🧠 Why?
 
 ### API-first by default
@@ -177,6 +181,8 @@ Both fail fast instead of silently returning partial data.
 ### Per-request state
 
 Under FPM, paths, configuration, and the kernel live for one request. There is no hidden long-running state, and `Path`/`Kernel` intentionally do not support reuse across requests in long-running runtimes.
+
+---
 
 ## 🤝 Contributions
 
