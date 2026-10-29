@@ -124,7 +124,7 @@ test('error handler bootstrap secures production ini', function () {
 
 test('error handler bootstrap enables development ini and handler', function () {
     $root = temp_dir('eh_boot_');
-    file_put_contents($root . '/env.php', '<?php return ["environment" => "development"];');
+    file_put_contents($root . '/env.json', '{"environment":"development"}');
 
     $export = var_export($root, true);
     $code = '\Sourcerer\Path::register("root", ' . $export . ');'
@@ -140,6 +140,79 @@ test('error handler bootstrap enables development ini and handler', function () 
         remove_tree($root);
     }
 });
+
+test('error handler bootstrap keeps staging on safe ini without a custom handler', function () {
+    $root = temp_dir('eh_staging_');
+    file_put_contents($root . '/env.json', '{"environment":"staging"}');
+
+    $export = var_export($root, true);
+    $code = '\Sourcerer\Path::register("root", ' . $export . ');'
+        . '\Sourcerer\Error\ErrorHandler::bootstrap();'
+        . 'ini_set("error_log", "/dev/null");'
+        . 'echo ini_get("display_errors") . "|" . ini_get("zend.exception_ignore_args") . "|" . ini_get("log_errors") . "|" . error_reporting();'
+        . 'try { trigger_error("boom", E_USER_WARNING); echo "|no-throw"; } catch (\ErrorException $e) { echo "|caught"; }';
+
+    try {
+        expect(trim(run_php($code)))->toBe('0|1|1|' . E_ALL . '|no-throw');
+    } finally {
+        remove_tree($root);
+    }
+});
+
+test('error handler logs trace for staging 4xx but keeps the response opaque', function () {
+    $root = temp_dir('eh_staging_');
+    mkdir($root . '/config');
+    mkdir($root . '/logs');
+    file_put_contents($root . '/env.json', '{"environment":"staging"}');
+
+    $export = var_export($root, true);
+    $code = '\Sourcerer\Path::register("root", ' . $export . ');'
+        . '\Sourcerer\Path::register("config", ' . $export . ' . "/config");'
+        . '\Sourcerer\Path::register("logs", ' . $export . ' . "/logs");'
+        . '$c = new \STDW\Container\Container();'
+        . '$c->singleton(\Sourcerer\Log\LogInterface::class, fn () => new \Sourcerer\Log\Log(' . $export . ' . "/logs/app.log"));'
+        . '$h = new \Sourcerer\Error\ErrorHandler($c);'
+        . '$r = $h->handle(new \Sourcerer\Error\Exception\HttpException(404, "Not Found"), new \Tests\Fixtures\FakeRequest("GET", "http://localhost/missing"), new \STDW\Http\Response());'
+        . 'echo $r->getStatus() . "|" . $r->getBody();';
+
+    try {
+        [$status, $body] = explode('|', trim(run_php($code)), 2);
+        $log = (string) file_get_contents($root . '/logs/app.log');
+
+        expect((int) $status)->toBe(404)
+            ->and($body)->not->toContain('HttpException')
+            ->and($log)->toContain('"status":404')
+            ->and($log)->toContain('"trace":');
+    } finally {
+        remove_tree($root);
+    }
+});
+
+test('error handler falls back to production when the environment is missing or invalid', function (string $json) {
+    $root = temp_dir('eh_fallback_');
+    mkdir($root . '/config');
+    mkdir($root . '/logs');
+
+    if ($json !== '') {
+        file_put_contents($root . '/env.json', $json);
+    }
+
+    $export = var_export($root, true);
+    $code = '\Sourcerer\Path::register("root", ' . $export . ');'
+        . '\Sourcerer\Error\ErrorHandler::bootstrap();'
+        . 'echo ini_get("display_errors") . "|" . ini_get("zend.exception_ignore_args") . "|" . ini_get("log_errors") . "|" . error_reporting();';
+
+    try {
+        expect(trim(run_php($code)))->toBe('0|1|1|' . E_ALL);
+    } finally {
+        remove_tree($root);
+    }
+})->with([
+    'missing' => '',
+    'invalid value' => '{"environment":"qa"}',
+    'root list' => '[]',
+    'invalid json' => '{"environment":',
+]);
 
 test('error handler redacts sensitive query keys by substring', function () {
     $request = new FakeRequest(
@@ -234,7 +307,7 @@ test('error handler reveals details in development and json config mode', functi
     $root = temp_dir('eh_');
     mkdir($root . '/config');
     mkdir($root . '/logs');
-    file_put_contents($root . '/env.php', '<?php return ["environment" => "development"];');
+    file_put_contents($root . '/env.json', '{"environment":"development"}');
     file_put_contents($root . '/config/error.php', '<?php return ["mode" => "json", "messages" => []];');
 
     $export = var_export($root, true);

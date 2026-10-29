@@ -5,84 +5,157 @@ use function Sourcerer\env;
 
 beforeEach(fn () => reset_path());
 
-function env_run(string $dir, string $expression): string
+function env_fixture(string $json): string
 {
-    $register = '\Sourcerer\Path::register("root", ' . var_export($dir, true) . ');';
+    $dir = temp_dir('env_');
+    file_put_contents($dir . '/env.json', $json);
+    Path::register('root', $dir);
 
-    return trim(run_php($register . $expression));
+    return $dir;
 }
 
-test('env reads dot-notated item from env.php', function () {
-    $dir = temp_dir('env_');
-    file_put_contents($dir . '/env.php', '<?php return ["environment" => "testing", "db" => ["host" => "localhost"]];');
+test('env reads dot-notated item from env.json', function () {
+    $dir = env_fixture('{"environment":"testing","db":{"host":"localhost"}}');
 
     try {
-        expect(env_run($dir, 'echo \Sourcerer\env("environment") . "|" . \Sourcerer\env("db.host");'))
-            ->toBe('testing|localhost');
+        expect(env('environment'))->toBe('testing')
+            ->and(env('db.host'))->toBe('localhost');
     } finally {
-        remove_file($dir . '/env.php');
-        remove_dir($dir);
+        remove_tree($dir);
     }
 });
 
-test('env returns default when key missing', function () {
-    $dir = temp_dir('env_');
-    file_put_contents($dir . '/env.php', '<?php return [];');
+test('env throws when key is missing', function () {
+    $dir = env_fixture('{}');
 
     try {
-        expect(env_run($dir, 'echo \Sourcerer\env("missing.key", "default_env");'))
-            ->toBe('default_env');
+        expect(fn () => env('missing.key'))->toThrow(RuntimeException::class);
     } finally {
-        remove_file($dir . '/env.php');
-        remove_dir($dir);
+        remove_tree($dir);
     }
 });
 
-test('env throws when no default and key missing', function () {
-    $dir = temp_dir('env_');
-    file_put_contents($dir . '/env.php', '<?php return [];');
+test('env throws when traversing a scalar value', function () {
+    $dir = env_fixture('{"environment":"testing"}');
 
     try {
-        expect(env_run($dir, 'try { \Sourcerer\env("missing.key"); echo "no-throw"; } catch (\Throwable $e) { echo $e::class; }'))
-            ->toBe(RuntimeException::class);
+        expect(fn () => env('environment.nested'))->toThrow(RuntimeException::class);
     } finally {
-        remove_file($dir . '/env.php');
-        remove_dir($dir);
+        remove_tree($dir);
     }
 });
 
-test('env returns default when file missing', function () {
+test('env throws when file is missing', function () {
     $dir = temp_dir('env_');
+    Path::register('root', $dir);
 
     try {
-        expect(env_run($dir, 'echo \Sourcerer\env("any.key", "fallback");'))
-            ->toBe('fallback');
+        expect(fn () => env('any.key'))->toThrow(RuntimeException::class);
     } finally {
-        remove_dir($dir);
+        remove_tree($dir);
     }
 });
 
-test('env throws when no default and file missing', function () {
-    $dir = temp_dir('env_');
+test('env throws when root path is not registered', function () {
+    expect(fn () => env('any.key'))->toThrow(RuntimeException::class);
+});
+
+test('env rejects invalid JSON', function () {
+    $dir = env_fixture('{"broken":');
 
     try {
-        expect(env_run($dir, 'try { \Sourcerer\env("any.key"); echo "no-throw"; } catch (\Throwable $e) { echo $e::class; }'))
-            ->toBe(RuntimeException::class);
+        expect(fn () => env('broken'))->toThrow(RuntimeException::class);
     } finally {
-        remove_dir($dir);
+        remove_tree($dir);
     }
 });
 
-test('env throws when file does not return array', function () {
-    $dir = temp_dir('env_');
-    file_put_contents($dir . '/env.php', '<?php return 42;');
+test('env rejects an empty JSON document', function (string $json) {
+    $dir = env_fixture($json);
 
     try {
-        expect(env_run($dir, 'try { \Sourcerer\env("test"); echo "no-throw"; } catch (\Throwable $e) { echo $e::class; }'))
-            ->toBe(RuntimeException::class);
+        expect(fn () => env('value'))->toThrow(RuntimeException::class);
     } finally {
-        remove_file($dir . '/env.php');
-        remove_dir($dir);
+        remove_tree($dir);
+    }
+})->with([
+    'empty' => '',
+    'whitespace' => " \n\t",
+]);
+
+test('env rejects a root that is not a JSON object', function (string $json) {
+    $dir = env_fixture($json);
+
+    try {
+        expect(fn () => env('value'))->toThrow(RuntimeException::class);
+    } finally {
+        remove_tree($dir);
+    }
+})->with(['[]', '[1,2]', '42', '"value"', 'null', 'true']);
+
+test('env rejects an oversized file', function () {
+    $dir = env_fixture(str_repeat('x', 1_048_577));
+
+    try {
+        expect(fn () => env('value'))->toThrow(RuntimeException::class);
+    } finally {
+        remove_tree($dir);
+    }
+});
+
+test('env rejects a symlinked file', function () {
+    $dir = temp_dir('env_');
+    $target = $dir . '/target.json';
+    file_put_contents($target, '{"value":"linked"}');
+    symlink($target, $dir . '/env.json');
+    Path::register('root', $dir);
+
+    try {
+        expect(fn () => env('value'))->toThrow(RuntimeException::class);
+    } finally {
+        remove_tree($dir);
+    }
+});
+
+test('env rejects invalid paths', function (string $path) {
+    $dir = env_fixture('{"db":{"host":"localhost"}}');
+
+    try {
+        expect(fn () => env($path))->toThrow(RuntimeException::class);
+    } finally {
+        remove_tree($dir);
+    }
+})->with([
+    'empty' => '',
+    'empty segment' => 'db..host',
+    'null byte' => "db\0host",
+]);
+
+test('env caches the first read', function () {
+    $dir = env_fixture('{"value":"original"}');
+
+    try {
+        expect(env('value'))->toBe('original');
+
+        file_put_contents($dir . '/env.json', '{"value":"changed"}');
+
+        expect(env('value'))->toBe('original');
+    } finally {
+        remove_tree($dir);
+    }
+});
+
+test('env does not populate superglobals or process environment', function () {
+    $key = 'sourcerer_env_isolated';
+    $dir = env_fixture(json_encode([$key => 'value'], JSON_THROW_ON_ERROR));
+
+    try {
+        expect(env($key))->toBe('value')
+            ->and(isset($_ENV[$key]))->toBeFalse()
+            ->and(isset($_SERVER[$key]))->toBeFalse()
+            ->and(getenv($key))->toBeFalse();
+    } finally {
+        remove_tree($dir);
     }
 });
 
@@ -94,24 +167,8 @@ test('env reads the canonical fixture in-process', function () {
         ->and(env('app'))->toBe(['name' => 'Sourcerer']);
 });
 
-test('env returns default for a missing key in-process', function () {
-    bootstrap_app();
-
-    expect(env('missing.key', 'fallback'))->toBe('fallback');
-});
-
-test('env throws for a missing key without default in-process', function () {
+test('env throws for a missing key in-process', function () {
     bootstrap_app();
 
     expect(fn () => env('missing.key'))->toThrow(RuntimeException::class);
-});
-
-test('env returns default when root path not registered', function () {
-    expect(trim(run_php('echo \Sourcerer\env("any.key", "fallback");')))->toBe('fallback');
-});
-
-test('env throws when root path not registered and no default', function () {
-    $output = run_php('try { \Sourcerer\env("any.key"); echo "no-throw"; } catch (\Throwable $e) { echo $e::class; }');
-
-    expect(trim($output))->toBe(RuntimeException::class);
 });

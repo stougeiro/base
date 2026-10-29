@@ -24,7 +24,7 @@ function fixture_root(): string
         }
     }
 
-    file_put_contents($root . '/env.php', '<?php return ["environment" => "production", "app" => ["name" => "Sourcerer"]];');
+    file_put_contents($root . '/env.json', '{"environment":"production","app":{"name":"Sourcerer"}}');
     file_put_contents($config . '/error.php', '<?php return ["mode" => "html", "messages" => [418 => "teapot"], "snippet" => ["pad" => "12"]];');
     file_put_contents($config . '/app.php', '<?php return ["providers" => [\Tests\Fixtures\TestProvider::class], "modules" => [\Tests\Fixtures\TestModule::class]];');
 
