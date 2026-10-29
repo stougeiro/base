@@ -21,8 +21,9 @@ use function Sourcerer\env;
  * Turns any throwable into an HTTP response.
  *
  * Opinionated framework init: bootstrap() secures error reporting before
- * configuration and the constructor reads environment and error settings from
- * the global helpers config() and env() with safe defaults.
+ * configuration. The constructor reads the environment and error settings from
+ * config() and env(); a missing or invalid environment falls back to
+ * production.
  */
 final class ErrorHandler
 {
@@ -47,6 +48,15 @@ final class ErrorHandler
         'card',
     ];
 
+    private const DEVELOPMENT = 'development';
+
+    private const STAGING = 'staging';
+
+    private const PRODUCTION = 'production';
+
+
+    private readonly string $environment;
+
     private readonly bool $development;
 
     private readonly bool $json;
@@ -63,13 +73,14 @@ final class ErrorHandler
     public function __construct(
         private readonly ContainerInterface $container,
     ) {
-        $env = env('environment', 'production');
+        $env = self::environment();
         $mode = config('error.mode', 'html');
         $messages = config('error.messages', []);
         $pad = config('error.snippet.pad', 10);
         $redact = config('error.log.redact', self::REDACT);
 
-        $this->development = is_string($env) && $env === 'development';
+        $this->environment = $env;
+        $this->development = $env === self::DEVELOPMENT;
         $this->json = is_string($mode) && strtolower($mode) === 'json';
         $this->messages = is_array($messages) ? $messages : [];
         $this->sensitive = array_values(array_unique([
@@ -94,10 +105,10 @@ final class ErrorHandler
      */
     public static function bootstrap(): void
     {
-        // Baseline before env(): a broken env.php must not leave display on.
+        // Baseline before env(): a broken env.json must not leave display on.
         self::harden();
 
-        if (env('environment', 'production') !== 'development') {
+        if (self::environment() !== self::DEVELOPMENT) {
             return;
         }
 
@@ -105,7 +116,6 @@ final class ErrorHandler
         self::harden(true);
         self::register();
     }
-
 
     /**
      * Logs the throwable and renders it as an HTML or JSON response.
@@ -158,10 +168,33 @@ final class ErrorHandler
 
 
     /**
+     * Resolves the environment without ever exposing an invalid value.
+     *
+     * A missing or malformed env.json is treated as production, both here and
+     * in bootstrap(), so failures fall back to the safe baseline.
+     */
+    private static function environment(): string
+    {
+        try {
+            $value = env('environment');
+        } catch (Throwable) {
+            return self::PRODUCTION;
+        }
+
+        return match ($value) {
+            self::DEVELOPMENT => self::DEVELOPMENT,
+            self::STAGING => self::STAGING,
+            self::PRODUCTION => self::PRODUCTION,
+
+            default => self::PRODUCTION,
+        };
+    }
+
+    /**
      * Safe error settings for deployments that cannot edit php.ini.
      *
      * Private on purpose: bootstrap() is the only caller and passes the mode
-     * explicitly so the safe baseline runs before env() is read.
+     * explicitly so the safe baseline runs before the environment is read.
      */
     private static function harden(bool $development = false): void
     {
@@ -242,8 +275,8 @@ final class ErrorHandler
                 'ua' => self::clean($request->getHeader('User-Agent') ?? ''),
             ];
 
-            if ($status >= 500) {
-                // harden() hides argument values in production.
+            if ($status >= 500 || $this->environment === self::STAGING) {
+                // harden() hides argument values outside development.
                 $context['trace'] = $error->getTraceAsString();
             }
 
