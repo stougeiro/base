@@ -50,8 +50,7 @@
         "stougeiro/router-contract": "^2.1.0",
         "stougeiro/container": "^4.0",
         "stougeiro/http": "^2.2",
-        "stougeiro/immutable": "^2.0",
-        "stougeiro/view-contract": "^2.0"
+        "stougeiro/immutable": "^2.0"
     },
     "autoload-dev": {
         "psr-4": {
