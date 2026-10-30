@@ -48,6 +48,14 @@ composer require stougeiro/base
 
 Those are application decisions. Reference wiring and expansion patterns live in [stougeiro/app](https://github.com/stougeiro/app) and [stougeiro/skeleton](https://github.com/stougeiro/skeleton).
 
+## ⚡ Performance
+
+Base targets the FPM request lifecycle. With OPcache enabled, and route caching when routing is used, framework overhead is small compared with database and network costs.
+
+In a reference no-op benchmark with 80 FPM workers, Base sustained **500 req/s for 60 seconds** with **p95 between 3 ms and 14 ms** and zero failed requests. This measures the Base/HTTP layer, not a complete application.
+
+Real throughput and latency depend on database queries, external services, logging, serialization, and worker sizing. See [BENCHMARK.md](BENCHMARK.md) for methodology, environment, and caveats.
+
 ## 🚀 Usage Example
 
 Base does not generate an application. The example below assumes the application has already bound its router and request pipeline providers.
@@ -70,8 +78,11 @@ Path::register('logs', 'storage/log/', 'root');
 
 $kernel = Kernel::create();
 
-$kernel->handle(new Request())->send();
-$kernel->terminate();
+try {
+    $kernel->handle(new Request())->send();
+} finally {
+    $kernel->terminate();
+}
 ```
 
 `Path::register()` requires the directory to exist. Duplicate keys and invalid paths throw immediately, catching configuration mistakes before dispatch.
@@ -178,9 +189,13 @@ YAML, NEON, TOML, and similar formats would require an additional parser or tran
 
 Both fail fast instead of silently returning partial data.
 
-### Per-request state
+### FPM runtime model
 
-Under FPM, paths, configuration, and the kernel live for one request. There is no hidden long-running state, and `Path`/`Kernel` intentionally do not support reuse across requests in long-running runtimes.
+Base targets PHP-FPM. Although workers are reused, PHP resets userland state for every request: `static` caches, the kernel singleton, the container, `ini_set()` changes, and error handlers do not carry over.
+
+Request input and response emission are SAPI-based through `stougeiro/http`. The application must call `terminate()` after sending the response, ideally in a `finally` block.
+
+Long-running runtimes that reuse the process across requests are not supported.
 
 ---
 
