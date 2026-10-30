@@ -62,6 +62,12 @@
         "pestphp/pest": "^3.8",
         "stougeiro/router": "^1.0"
     },
+    "scripts": {
+        "test": "pest",
+        "test:performance": "pest --testsuite=Performance",
+        "test:coverage": "pest --coverage",
+        "stan": "vendor/bin/phpstan"
+    },
     "config": {
         "allow-plugins": {
             "pestphp/pest-plugin": true
