@@ -1,8 +1,8 @@
 <?php declare(strict_types=1);
 
+use Sourcerer\Contract\Error\ErrorRendererInterface;
 use Sourcerer\Error\Fallback;
 use Sourcerer\Error\ErrorRenderer;
-use Sourcerer\Error\ErrorRendererInterface;
 
 test('error renderer implements the renderer contract', function () {
     expect(new ErrorRenderer())->toBeInstanceOf(ErrorRendererInterface::class);

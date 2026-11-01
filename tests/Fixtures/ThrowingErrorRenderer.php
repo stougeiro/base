@@ -3,7 +3,7 @@
 namespace Tests\Fixtures;
 
 use RuntimeException;
-use Sourcerer\Error\ErrorRendererInterface;
+use Sourcerer\Contract\Error\ErrorRendererInterface;
 use Throwable;
 
 
