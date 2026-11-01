@@ -174,6 +174,8 @@ The error handler is installed before application configuration so a broken boot
 
 `HttpException` carries status `400`–`599` and validated headers. `5xx` responses include an `X-Error-Id`; logs include the request path, redacted query, client IP, and user agent.
 
+The body is rendered by `ErrorRenderer` by default. An application may point `error.renderer` to a class implementing `Sourcerer\Error\ErrorRendererInterface`; this is how an app can render error pages through its own view layer without adding a view dependency to Base. Missing or invalid renderers fall back to the built-in `ErrorRenderer`.
+
 `Fallback` is the last line of defense. It can emit a minimal `500` even when the container, configuration, or autoloader is unavailable.
 
 ### Why JSON for the environment?
