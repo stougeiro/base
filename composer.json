@@ -49,7 +49,7 @@
         "ext-json": "*",
         "stougeiro/container": "^4.0",
         "stougeiro/http": "^2.2",
-        "stougeiro/base-contract": "^0.1.0"
+        "stougeiro/base-contract": "^0.1.1"
     },
     "autoload-dev": {
         "psr-4": {
