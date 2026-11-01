@@ -13,7 +13,7 @@ use Throwable;
  * Titles and messages stay raw until the moment of escaping, so a value is
  * escaped exactly once.
  */
-final class ErrorRenderer
+final class ErrorRenderer implements ErrorRendererInterface
 {
     private const REASONS = [
         400 => 'Bad Request',

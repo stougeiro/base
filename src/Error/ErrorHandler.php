@@ -70,7 +70,7 @@ final class ErrorHandler
     /** @var list<string> */
     private readonly array $sensitive;
 
-    private readonly ErrorRenderer $renderer;
+    private readonly ErrorRendererInterface $renderer;
 
 
     public function __construct(
@@ -95,7 +95,7 @@ final class ErrorHandler
             $pad = is_numeric($pad) ? (int) $pad : 10;
         }
 
-        $this->renderer = new ErrorRenderer($pad);
+        $this->renderer = $this->resolveRenderer($pad);
     }
 
 
@@ -259,6 +259,30 @@ final class ErrorHandler
         $value = self::clean($value);
 
         return strlen($value) > $limit ? substr($value, 0, $limit) .'...' : $value;
+    }
+
+
+    /**
+     * Resolves the configured renderer, falling back to the built-in one when
+     * configuration is absent, invalid or cannot be built.
+     */
+    private function resolveRenderer(int $snippetPad): ErrorRendererInterface
+    {
+        $renderer = config('error.renderer', null);
+
+        if ( ! is_string($renderer) || $renderer === '') {
+            return new ErrorRenderer($snippetPad);
+        }
+
+        try {
+            $instance = $this->container->make($renderer);
+
+            return $instance instanceof ErrorRendererInterface
+                ? $instance
+                : new ErrorRenderer($snippetPad);
+        } catch (Throwable) {
+            return new ErrorRenderer($snippetPad);
+        }
     }
 
 
