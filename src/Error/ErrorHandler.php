@@ -2,19 +2,18 @@
 
 namespace Sourcerer\Error;
 
+use Sourcerer\Contract\Error\HttpException;
+use Sourcerer\Contract\Log\LogInterface;
+use function Sourcerer\config;
+use function Sourcerer\env;
+
 use STDW\Contract\Container\ContainerInterface;
 use STDW\Contract\Http\RequestInterface;
 use STDW\Contract\Http\ResponseInterface;
 
-use Sourcerer\Error\Exception\HttpException;
-use Sourcerer\Log\LogInterface;
-
 use ErrorException;
 use RuntimeException;
 use Throwable;
-
-use function Sourcerer\config;
-use function Sourcerer\env;
 
 
 /**

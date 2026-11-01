@@ -2,7 +2,9 @@
 
 namespace Sourcerer\Log;
 
+use Sourcerer\Contract\Log\LogInterface;
 use Sourcerer\Path;
+
 use Throwable;
 
 

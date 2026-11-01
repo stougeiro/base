@@ -2,6 +2,8 @@
 
 namespace Sourcerer\Service;
 
+use Sourcerer\Contract\Service\ResultInterface;
+
 use STDW\Immutable\Contract\ImmutableInterface;
 
 

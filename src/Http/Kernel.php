@@ -2,6 +2,10 @@
 
 namespace Sourcerer\Http;
 
+use Sourcerer\Contract\Module\ModuleProviderInterface;
+use Sourcerer\Error\ErrorHandler;
+use Sourcerer\Error\Fallback;
+
 use STDW\Container\ServiceManager;
 use STDW\Contract\Container\ContainerInterface;
 use STDW\Contract\Container\ServiceManagerInterface;
@@ -10,10 +14,6 @@ use STDW\Contract\Http\RequestHandlerInterface;
 use STDW\Contract\Http\RequestInterface;
 use STDW\Contract\Http\ResponseInterface;
 use STDW\Http\Response;
-
-use Sourcerer\Error\ErrorHandler;
-use Sourcerer\Error\Fallback;
-use Sourcerer\Module\ModuleProviderInterface;
 
 use Throwable;
 

@@ -2,15 +2,16 @@
 
 namespace Sourcerer\Http;
 
+use Sourcerer\Contract\Error\HttpException;
+use Sourcerer\Contract\Http\ControllerInterface;
+use Sourcerer\Contract\Http\RoutingMiddlewareCollectionInterface;
+
 use STDW\Contract\Container\ContainerInterface;
 use STDW\Contract\Http\MiddlewareInterface;
 use STDW\Contract\Http\RequestInterface;
 use STDW\Contract\Http\ResponseInterface;
 use STDW\Contract\Http\Router\RouterInterface;
 use STDW\Http\Middleware\MiddlewareManager;
-
-use Sourcerer\Error\Exception\HttpException;
-use Sourcerer\Http\Controller\ControllerInterface;
 
 use Closure;
 use RuntimeException;
@@ -26,7 +27,7 @@ final class RoutingDispatcherMiddleware implements MiddlewareInterface
 {
     public function __construct(
         private readonly ContainerInterface $container,
-        private readonly RoutingMiddlewareCollection $middlewares,
+        private readonly RoutingMiddlewareCollectionInterface $middlewares,
     ) { }
 
 

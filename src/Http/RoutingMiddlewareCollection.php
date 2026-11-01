@@ -2,11 +2,12 @@
 
 namespace Sourcerer\Http;
 
+use Sourcerer\Contract\Http\ControllerInterface;
+use Sourcerer\Contract\Http\RoutingMiddlewareCollectionInterface;
+use Sourcerer\Contract\Module\ModuleProviderInterface;
+
 use STDW\Contract\Container\ContainerInterface;
 use STDW\Contract\Http\MiddlewareInterface;
-
-use Sourcerer\Module\ModuleProviderInterface;
-use Sourcerer\Http\Controller\ControllerInterface;
 
 use RuntimeException;
 
@@ -16,7 +17,7 @@ use RuntimeException;
  * the controller level (the exact controller key), declared by each module in
  * its own middleware map.
  */
-final class RoutingMiddlewareCollection
+final class RoutingMiddlewareCollection implements RoutingMiddlewareCollectionInterface
 {
     /**
      * Module namespace => the module's middleware map.
@@ -89,7 +90,7 @@ final class RoutingMiddlewareCollection
      * The module and controller level middlewares of a controller, ready to
      * run: the module ones ('*') come before the controller ones.
      *
-     * @param string $controller
+     * @param class-string<ControllerInterface> $controller
      * @return array<int, MiddlewareInterface>
      */
     public function forController(string $controller): array
