@@ -7,7 +7,7 @@
 
 An opinionated PHP 8.2 foundation for small HTTP and API applications.
 
-Base supplies the request lifecycle, module boundaries, controllers, error handling, configuration, and logging. It deliberately stops at the HTTP boundary: concrete routing, cache, views, and application wiring belong to the application.
+Base supplies the request lifecycle, error handling, configuration, and logging, plus the FPM implementations that fulfill the shared module and controller contracts. Those contracts live in `stougeiro/base-contract`. Base deliberately stops at the HTTP boundary: concrete routing, cache, views, and application wiring belong to the application.
 
 The goal is a small, explicit core that is easy to inspect, replace, and test.
 
@@ -20,7 +20,7 @@ The goal is a small, explicit core that is easy to inspect, replace, and test.
 - **Secure bootstrap**: `development`, `staging`, and `production` modes with production-safe defaults.
 - **Configuration helpers**: dot-notated `env.json` and `config/*.php`. `env()` is strict and has no default; `config()` supports defaults.
 - **Path registry**: `Path` resolves real directories and fails loudly on invalid or duplicate registrations.
-- **Small service layer**: immutable `Result` and action/check contracts.
+- **Small service layer**: immutable `Result` implementation; action/check contracts come from `stougeiro/base-contract`.
 - **Quality tooling**: PHPStan Level 9 and a Pest suite.
 
 ---
@@ -40,6 +40,7 @@ composer require stougeiro/base
 
 ### What Base Does Not Include
 
+- Contract definitions; they live in `stougeiro/base-contract`.
 - A concrete router or route repository.
 - A cache implementation.
 - A view engine or view registration.
@@ -131,9 +132,9 @@ declare(strict_types=1);
 
 namespace App\HelloWorld;
 
-use Sourcerer\Module\ModuleProviderAbstracted;
+use Sourcerer\Contract\Module\ModuleProviderAbstract;
 
-final class HelloWorldModuleProvider extends ModuleProviderAbstracted
+final class HelloWorldModuleProvider extends ModuleProviderAbstract
 {
     public function configure(): void
     {
