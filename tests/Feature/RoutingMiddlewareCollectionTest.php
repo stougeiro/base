@@ -1,5 +1,6 @@
 <?php declare(strict_types=1);
 
+use Sourcerer\Contract\Http\RoutingMiddlewareCollectionInterface;
 use Sourcerer\Http\RoutingMiddlewareCollection;
 use STDW\Container\Container;
 use Tests\Fixtures\Deep\DeepController;
@@ -18,6 +19,10 @@ function php_class(string $fqcn): string
 {
     return '\\' . $fqcn . '::class';
 }
+
+test('collection implements the contract', function () {
+    expect($this->collection)->toBeInstanceOf(RoutingMiddlewareCollectionInterface::class);
+});
 
 test('load stores a valid middleware map', function () {
     $file = temp_php('<?php return ["*" => [' . php_class(PassMiddleware::class) . ']];');

@@ -2,10 +2,10 @@
 
 namespace Tests\Fixtures;
 
-use Sourcerer\Module\ModuleProviderAbstracted;
+use Sourcerer\Contract\Module\ModuleProviderAbstract;
 
 
-final class TestModule extends ModuleProviderAbstracted
+final class TestModule extends ModuleProviderAbstract
 {
     public static int $configured = 0;
 

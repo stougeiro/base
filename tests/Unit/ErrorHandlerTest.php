@@ -1,9 +1,9 @@
 <?php declare(strict_types=1);
 
+use Sourcerer\Contract\Error\HttpException;
+use Sourcerer\Contract\Log\LogInterface;
 use Sourcerer\Error\ErrorHandler;
-use Sourcerer\Error\Exception\HttpException;
 use Sourcerer\Log\Log;
-use Sourcerer\Log\LogInterface;
 use STDW\Container\Container;
 use STDW\Http\Response;
 use Tests\Fixtures\FakeRequest;
@@ -170,9 +170,9 @@ test('error handler logs trace for staging 4xx but keeps the response opaque', f
         . '\Sourcerer\Path::register("config", ' . $export . ' . "/config");'
         . '\Sourcerer\Path::register("logs", ' . $export . ' . "/logs");'
         . '$c = new \STDW\Container\Container();'
-        . '$c->singleton(\Sourcerer\Log\LogInterface::class, fn () => new \Sourcerer\Log\Log(' . $export . ' . "/logs/app.log"));'
+        . '$c->singleton(\Sourcerer\Contract\Log\LogInterface::class, fn () => new \Sourcerer\Log\Log(' . $export . ' . "/logs/app.log"));'
         . '$h = new \Sourcerer\Error\ErrorHandler($c);'
-        . '$r = $h->handle(new \Sourcerer\Error\Exception\HttpException(404, "Not Found"), new \Tests\Fixtures\FakeRequest("GET", "http://localhost/missing"), new \STDW\Http\Response());'
+        . '$r = $h->handle(new \Sourcerer\Contract\Error\HttpException(404, "Not Found"), new \Tests\Fixtures\FakeRequest("GET", "http://localhost/missing"), new \STDW\Http\Response());'
         . 'echo $r->getStatus() . "|" . $r->getBody();';
 
     try {
@@ -338,7 +338,7 @@ test('error handler reveals details in development and json config mode', functi
         . '\Sourcerer\Path::register("config", ' . $export . ' . "/config");'
         . '\Sourcerer\Path::register("logs", ' . $export . ' . "/logs");'
         . '$c = new \STDW\Container\Container();'
-        . '$c->singleton(\Sourcerer\Log\LogInterface::class, fn () => new \Sourcerer\Log\Log(' . $export . ' . "/logs/app.log"));'
+        . '$c->singleton(\Sourcerer\Contract\Log\LogInterface::class, fn () => new \Sourcerer\Log\Log(' . $export . ' . "/logs/app.log"));'
         . '$h = new \Sourcerer\Error\ErrorHandler($c);'
         . '$r = $h->handle(new \RuntimeException("Secret detail"), new \Tests\Fixtures\FakeRequest("GET", "http://localhost/"), new \STDW\Http\Response());'
         . 'echo $r->getStatus() . "|" . $r->getHeader("Content-Type") . "|" . $r->getBody();';

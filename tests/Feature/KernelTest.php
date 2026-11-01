@@ -2,7 +2,7 @@
 
 use Sourcerer\Http\Kernel;
 use Sourcerer\Log\Log;
-use Sourcerer\Log\LogInterface;
+use Sourcerer\Contract\Log\LogInterface;
 use STDW\Contract\Http\RequestHandlerInterface;
 use STDW\Contract\Http\RequestInterface;
 use STDW\Contract\Http\ResponseInterface;

@@ -4,10 +4,10 @@ namespace Tests\Fixtures;
 
 use STDW\Contract\Http\ResponseInterface;
 
-use Sourcerer\Http\Controller\Controller;
+use Sourcerer\Contract\Http\ControllerAbstract;
 
 
-class OkController extends Controller
+class OkController extends ControllerAbstract
 {
     /** @var list<string> */
     protected array $allowed = ['get'];

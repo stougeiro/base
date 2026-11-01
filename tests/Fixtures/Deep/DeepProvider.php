@@ -2,10 +2,10 @@
 
 namespace Tests\Fixtures\Deep;
 
-use Sourcerer\Module\ModuleProviderAbstracted;
+use Sourcerer\Contract\Module\ModuleProviderAbstract;
 
 
-final class DeepProvider extends ModuleProviderAbstracted
+final class DeepProvider extends ModuleProviderAbstract
 {
     public function configure(): void
     { }

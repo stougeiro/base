@@ -1,9 +1,9 @@
 <?php declare(strict_types=1);
 
+use Sourcerer\Contract\Error\HttpException;
+use Sourcerer\Contract\Log\LogInterface;
 use Sourcerer\Error\ErrorHandler;
-use Sourcerer\Error\Exception\HttpException;
 use Sourcerer\Log\Log;
-use Sourcerer\Log\LogInterface;
 use STDW\Http\Response;
 use Tests\Fixtures\FakeRequest;
 use Tests\Support\PerformanceHelper;

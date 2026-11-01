@@ -2,10 +2,10 @@
 
 namespace Tests\Fixtures;
 
-use Sourcerer\Module\ModuleProviderAbstracted;
+use Sourcerer\Contract\Module\ModuleProviderAbstract;
 
 
-final class Provider extends ModuleProviderAbstracted
+final class Provider extends ModuleProviderAbstract
 {
     public function configure(): void
     { }

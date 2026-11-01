@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-use Sourcerer\Error\Exception\HttpException;
+use Sourcerer\Contract\Error\HttpException;
 use Sourcerer\Http\RoutingDispatcherMiddleware;
 use Sourcerer\Http\RoutingMiddlewareCollection;
 use STDW\Container\Container;
