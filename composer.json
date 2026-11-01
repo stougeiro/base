@@ -47,10 +47,9 @@
     "require": {
         "php": ">=8.2",
         "ext-json": "*",
-        "stougeiro/router-contract": "^2.1.0",
         "stougeiro/container": "^4.0",
         "stougeiro/http": "^2.2",
-        "stougeiro/immutable": "^2.0"
+        "stougeiro/base-contract": "^0.1.0"
     },
     "autoload-dev": {
         "psr-4": {
