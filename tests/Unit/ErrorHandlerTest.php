@@ -355,3 +355,44 @@ test('error handler reveals details in development and json config mode', functi
         remove_tree($root);
     }
 });
+
+test('error handler resolves a configured renderer or falls back to the default', function (string $config, string $expected) {
+    $root = temp_dir('eh_renderer_');
+    mkdir($root . '/config');
+    mkdir($root . '/logs');
+    file_put_contents($root . '/env.json', '{"environment":"production"}');
+    file_put_contents($root . '/config/error.php', '<?php return '. $config .';');
+
+    $export = var_export($root, true);
+    $code = '\Sourcerer\Path::register("root", ' . $export . ');'
+        . '\Sourcerer\Path::register("config", ' . $export . ' . "/config");'
+        . '\Sourcerer\Path::register("logs", ' . $export . ' . "/logs");'
+        . 'ini_set("error_log", ' . $export . ' . "/logs/php.log");'
+        . '$c = new \STDW\Container\Container();'
+        . '$c->singleton(\Sourcerer\Contract\Log\LogInterface::class, fn () => new \Sourcerer\Log\Log(' . $export . ' . "/logs/app.log"));'
+        . '$h = new \Sourcerer\Error\ErrorHandler($c);'
+        . '$r = $h->handle(new \RuntimeException("Boom"), new \Tests\Fixtures\FakeRequest("GET", "http://localhost/"), new \STDW\Http\Response());'
+        . 'echo $r->getStatus() . "|" . $r->getBody();';
+
+    try {
+        [$status, $body] = explode('|', trim(run_php($code)), 2);
+
+        expect((int) $status)->toBe(500)
+            ->and($body)->toContain($expected);
+    } finally {
+        remove_tree($root);
+    }
+})->with([
+    'custom renderer' => [
+        '["renderer" => \Tests\Fixtures\CustomErrorRenderer::class]',
+        'custom:500:',
+    ],
+    'class does not implement the interface' => [
+        '["renderer" => \stdClass::class]',
+        'Internal Server Error',
+    ],
+    'renderer throws' => [
+        '["renderer" => \Tests\Fixtures\ThrowingErrorRenderer::class]',
+        'Internal Server Error',
+    ],
+]);

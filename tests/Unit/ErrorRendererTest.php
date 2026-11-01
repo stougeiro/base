@@ -2,6 +2,11 @@
 
 use Sourcerer\Error\Fallback;
 use Sourcerer\Error\ErrorRenderer;
+use Sourcerer\Error\ErrorRendererInterface;
+
+test('error renderer implements the renderer contract', function () {
+    expect(new ErrorRenderer())->toBeInstanceOf(ErrorRendererInterface::class);
+});
 
 test('fallback id generates 16-character hex string', function () {
     expect(Fallback::id())->toMatch('/^[0-9A-F]{16}$/');
