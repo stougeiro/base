@@ -2,6 +2,7 @@
 
 namespace Sourcerer\Error;
 
+use Sourcerer\Contract\Error\ErrorRendererInterface;
 use Sourcerer\Contract\Error\HttpException;
 use Sourcerer\Contract\Log\LogInterface;
 use function Sourcerer\config;

@@ -2,6 +2,8 @@
 
 namespace Sourcerer\Error;
 
+use Sourcerer\Contract\Error\ErrorRendererInterface;
+
 use SplFileObject;
 use Throwable;
 
